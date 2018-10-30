@@ -1,0 +1,7 @@
+#git ignore file
+/.vs
+/debug
+/release
+/x64
+/GeneratedFiles
+.qmake.stash
