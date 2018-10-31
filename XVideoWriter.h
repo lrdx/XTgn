@@ -33,6 +33,7 @@ public:
 
 	void Initialize(const char* codec_name, const char* filename);
 	void Release();
+	bool GetFrameBuffer(uint8_t* buffer);
 	void WriteFrame();
 
 private:

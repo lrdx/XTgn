@@ -29,17 +29,15 @@ public:
 	VRWorker(Logger* logger);
 
 	const bool IsReady() { return m_initialized; }
-	const bool GetBuffer() { return m_buffer; }
 
-	void Init();
+	void Initalize();
 	void Release();
-	bool CopyScreenToBuffer();
+	bool CopyScreenToBuffer(const char* buffer);
 
 private:
 	Logger* m_logger;
 
 	bool m_initialized;
-	char* m_buffer;
 
 	openvr_context* m_context;
 

@@ -26,7 +26,7 @@ VRWorker::VRWorker(Logger* logger)
 	m_context->tex = nullptr;
 };
 
-void VRWorker::Init()
+void VRWorker::Initalize()
 {
 	m_logger->write("Try to initialize OpenVR...");
 
@@ -579,7 +579,7 @@ HRESULT VRWorker::GetSurfaceInfo(
 	return S_OK;
 }
 
-bool VRWorker::CopyScreenToBuffer()
+bool VRWorker::CopyScreenToBuffer(const char* buffer)
 {
 	Microsoft::WRL::ComPtr<ID3D11Texture2D> pStaging;
 	D3D11_TEXTURE2D_DESC desc = {};
@@ -607,7 +607,7 @@ bool VRWorker::CopyScreenToBuffer()
 		return false;
 	}
 
-	uchar* buffer = new uchar[(m_context->width * m_context->height * 4)];
+	//uchar* buffer = new uchar[(m_context->width * m_context->height * 4)];
 	uchar* buffer2 = new uchar[(m_context->width * m_context->height * 4)];
 
 	std::unique_ptr<uint8_t[]> pixels(new (std::nothrow) uint8_t[slicePitch]);

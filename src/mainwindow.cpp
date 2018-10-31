@@ -14,7 +14,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	logger = new Logger(this, "log.txt", ui->plainTextEdit);
 
 	vr = new VRWorker(logger);
-	vr->Init();
+	vr->Initalize();
+
+	vw = new XVideoWriter(logger);
 }
 
 MainWindow::~MainWindow()

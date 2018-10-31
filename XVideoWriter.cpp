@@ -122,8 +122,46 @@ void XVideoWriter::Release()
 	m_initialized = false;
 }
 
+bool XVideoWriter::GetFrameBuffer(uint8_t* buffer)
+{
+	if (!m_initialized)
+		return false;
+
+	const auto ret = av_frame_make_writable(m_video_context->frame);
+	if (ret < 0)
+	{
+		m_logger->write("Could not make writable frame");
+		return false;
+	}
+
+	buffer = *m_video_context->frame->data;
+	return true;
+}
+
 void XVideoWriter::WriteFrame()
 {
 	if (!m_initialized)
 		return;
+
+	auto ret = avcodec_send_frame(m_video_context->ctx, m_video_context->frame);
+	if (ret < 0)
+	{
+		m_logger->write("Error sending a frame for encoding\r\n");
+		return;
+	}
+
+	while (ret >= 0)
+	{
+		ret = avcodec_receive_packet(m_video_context->ctx, m_video_context->pkt);
+		if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+			return;
+		else if (ret < 0)
+		{
+			m_logger->write("Error during encoding\r\n");
+			return;
+		}
+
+		fwrite(m_video_context->pkt->data, 1, m_video_context->pkt->size, m_video_context->file);
+		av_packet_unref(m_video_context->pkt);
+	}
 }

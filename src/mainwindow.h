@@ -3,6 +3,7 @@
 
 #include "Logger.h"
 #include "VRWorker.h"
+#include "XVideoWriter.h"
 
 #include <QMainWindow>
 
@@ -30,6 +31,7 @@ private:
 
 	Logger* logger;
 	VRWorker* vr;
+	XVideoWriter* vw;
 };
 
 #endif // __MAIN_WINDOW_H__
