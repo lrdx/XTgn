@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include "Logger.h"
+#include "VRWorker.h"
 
 #include <QMainWindow>
 
@@ -28,6 +29,7 @@ private:
     Ui::MainWindow *ui;
 
 	Logger* logger;
+	VRWorker* vr;
 };
 
 #endif // MAINWINDOW_H

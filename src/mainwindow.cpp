@@ -12,10 +12,14 @@ MainWindow::MainWindow(QWidget *parent) :
 	connect(ui->actionExit, &QAction::triggered, this, &QWidget::close);
 
 	logger = new Logger(this, "log.txt", ui->plainTextEdit);
+
+	vr = new VRWorker(logger);
+	vr->Init();
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+	delete vr;
 	delete logger;
 }

@@ -1,5 +1,7 @@
 #include "Logger.h"
 
+#include <QDateTime>
+
 Logger::Logger(QObject *parent, QString fileName, QPlainTextEdit *editor) : QObject(parent)
 {
 	m_editor = editor;
