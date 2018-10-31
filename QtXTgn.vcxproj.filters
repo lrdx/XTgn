@@ -57,6 +57,9 @@
     <ClCompile Include="src\VRWorker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="XVideoWriter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="src\mainwindow.h">
@@ -68,6 +71,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\VRWorker.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="XVideoWriter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

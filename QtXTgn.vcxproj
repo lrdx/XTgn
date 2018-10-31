@@ -66,7 +66,12 @@
     <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</IgnoreImportLibrary>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>D:\gromov\vr\QtXTgn\QtXTgn\src;$(IncludePath)</IncludePath>
+    <IncludePath>D:\gromov\vr\QtXTgn\QtXTgn\src;D:\gromov\vr\QtXTgn\QtXTgn\ThirdPartyLibraries\ffmpeg\include;D:\gromov\vr\QtXTgn\QtXTgn\ThirdPartyLibraries\openvr\headers;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\gromov\vr\QtXTgn\QtXTgn\ThirdPartyLibraries;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>D:\gromov\vr\QtXTgn\QtXTgn\src;D:\gromov\vr\QtXTgn\QtXTgn\ThirdPartyLibraries\openvr\headers;D:\gromov\vr\QtXTgn\QtXTgn\ThirdPartyLibraries\ffmpeg\include;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\gromov\vr\QtXTgn\QtXTgn\ThirdPartyLibraries\ffmpeg\lib;D:\gromov\vr\QtXTgn\QtXTgn\ThirdPartyLibraries;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -87,9 +92,10 @@
       <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
       <WarningLevel>Level3</WarningLevel>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <SDLCheck>true</SDLCheck>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>$(QTDIR)\lib\qtmain.lib;shell32.lib;$(QTDIR)\lib\Qt5Widgets.lib;$(QTDIR)\lib\Qt5Gui.lib;$(QTDIR)\lib\Qt5Core.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(QTDIR)\lib\qtmain.lib;shell32.lib;$(QTDIR)\lib\Qt5Widgets.lib;$(QTDIR)\lib\Qt5Gui.lib;$(QTDIR)\lib\Qt5Core.lib;avutil.lib;avcodec.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(QTDIR)\lib;C:\openssl\lib;C:\Utils\my_sql\mysql-5.6.11-winx64\lib;C:\Utils\postgresql\pgsql\lib;$(QTDIR)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>"/MANIFESTDEPENDENCY:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' publicKeyToken='6595b64144ccf1df' language='*' processorArchitecture='*'" %(AdditionalOptions)</AdditionalOptions>
       <DataExecutionPrevention>true</DataExecutionPrevention>
@@ -186,6 +192,7 @@
     </QtUic>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="XVideoWriter.h" />
     <CustomBuild Include="debug\moc_predefs.h.cbt">
       <FileType>Document</FileType>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -211,6 +218,7 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\mainwindow.cpp" />
     <ClCompile Include="src\VRWorker.cpp" />
+    <ClCompile Include="XVideoWriter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="ui\mainwindow.ui" />
