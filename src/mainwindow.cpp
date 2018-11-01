@@ -17,6 +17,23 @@ MainWindow::MainWindow(QWidget *parent) :
 	vr->Initalize();
 
 	vw = new XVideoWriter(logger);
+	vw->Initialize("libx264", "test_video.avi");
+
+	if (!vr->IsInitialized() || !vw->IsInitialized())
+	{
+		logger->write("Failed initialized");
+		return;
+	}
+
+
+	uint8_t* buffer;
+	if (!vw->GetFrameBuffer(buffer))
+	{
+		logger->write("Failed get buffer");
+		return;
+	}
+
+	vr->CopyScreenToBuffer(buffer);
 }
 
 MainWindow::~MainWindow()

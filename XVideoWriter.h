@@ -28,6 +28,7 @@ class XVideoWriter
 {
 public:
 	XVideoWriter(Logger* logger);
+	~XVideoWriter();
 
 	bool IsInitialized() { return m_initialized; }
 

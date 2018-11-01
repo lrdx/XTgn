@@ -27,19 +27,20 @@ class VRWorker
 {
 public:
 	VRWorker(Logger* logger);
+	~VRWorker();
 
-	const bool IsReady() { return m_initialized; }
+	const bool IsInitialized() { return m_initialized; }
 
 	void Initalize();
 	void Release();
-	bool CopyScreenToBuffer(const char* buffer);
+	bool CopyScreenToBuffer(uint8_t* buffer);
 
 private:
 	Logger* m_logger;
 
 	bool m_initialized;
 
-	openvr_context* m_context;
+	openvr_context* m_vr_context;
 
 	HRESULT CaptureTexture(
 		_In_ ID3D11DeviceContext* pContext,
