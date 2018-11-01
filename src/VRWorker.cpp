@@ -83,6 +83,8 @@ void VRWorker::Initalize()
 	m_vr_context->width = desc.Width;
 	m_vr_context->height = desc.Height;
 
+	m_buffer = std::make_shared<uint8_t>(desc.Width * desc.Height * 4);
+
 	tex2D->Release();
 
 	//// Create cropped, linear texture
@@ -585,7 +587,7 @@ HRESULT VRWorker::GetSurfaceInfo(
 	return S_OK;
 }
 
-bool VRWorker::CopyScreenToBuffer(uint8_t* buffer)
+bool VRWorker::CopyScreenToBuffer()
 {
 	Microsoft::WRL::ComPtr<ID3D11Texture2D> pStaging;
 	D3D11_TEXTURE2D_DESC desc = {};

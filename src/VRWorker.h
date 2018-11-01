@@ -3,6 +3,7 @@
 
 #include "logger.h"
 
+#include <memory>
 #include <thread>
 #include <wrl\client.h>
 
@@ -30,15 +31,17 @@ public:
 	~VRWorker();
 
 	const bool IsInitialized() { return m_initialized; }
+	const std::shared_ptr<uint8_t*> GetBuffer() { return m_buffer; }
 
 	void Initalize();
 	void Release();
-	bool CopyScreenToBuffer(uint8_t* buffer);
+	bool CopyScreenToBuffer();
 
 private:
 	Logger* m_logger;
 
 	bool m_initialized;
+	std::shared_ptr<uint8_t*> m_buffer;
 
 	openvr_context* m_vr_context;
 
