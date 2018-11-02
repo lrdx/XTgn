@@ -27,9 +27,9 @@ public:
     ~MainWindow();
 
 private:
-    Ui::MainWindow *ui;
+    Ui::MainWindow* ui;
 
-	Logger* logger;
+	std::unique_ptr<Logger> logger;
 	VRWorker* vr;
 	XVideoWriter* vw;
 };

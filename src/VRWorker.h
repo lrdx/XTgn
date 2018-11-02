@@ -30,11 +30,14 @@ public:
 	VRWorker(Logger* logger);
 	~VRWorker();
 
-	const bool IsInitialized() { return m_initialized; }
-	const std::shared_ptr<uint8_t*> GetBuffer() { return m_buffer; }
-
 	void Initalize();
 	void Release();
+
+	const bool IsInitialized() { return m_initialized; }
+	const std::shared_ptr<uint8_t*> GetBuffer() { return m_buffer; }
+	const int GetWidth() { return m_vr_context->width; }
+	const int GetHeight() { return m_vr_context->height; }
+
 	bool CopyScreenToBuffer();
 
 private:
