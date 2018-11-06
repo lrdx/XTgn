@@ -1,4 +1,0 @@
-31.10.2018 18:16:18 Try to initialize OpenVR...31.10.2018 18:16:20 OpenVR not available
-31.10.2018 18:16:51 Try to initialize OpenVR...31.10.2018 18:16:52 OpenVR not available
-31.10.2018 18:25:15 Try to initialize OpenVR...31.10.2018 18:25:15 OpenVR not available
-31.10.2018 18:36:11 Try to initialize OpenVR...31.10.2018 18:36:12 OpenVR not available
