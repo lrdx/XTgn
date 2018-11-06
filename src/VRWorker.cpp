@@ -83,7 +83,19 @@ void VRWorker::Initalize()
 	m_vr_context->width = desc.Width;
 	m_vr_context->height = desc.Height;
 
-	m_buffer = std::make_shared<uint8_t>(desc.Width * desc.Height * 4);
+	size_t rowPitch, slicePitch, rowCount;
+	hr = GetSurfaceInfo(desc.Width, desc.Height, desc.Format, &slicePitch, &rowPitch, &rowCount);
+	if (FAILED(hr))
+	{
+		return;
+	}
+
+	m_buffer = std::make_unique<uint8_t[]>(slicePitch);
+	bufferRowCount = rowCount;
+
+
+	//m_buffer = std::make_shared<uint8_t>(desc.Width * desc.Height * 4);
+//	m_buffer = std::make_shared<FrameBuffer>(desc.Width, desc.Height, desc.Format);
 
 	tex2D->Release();
 
@@ -615,7 +627,7 @@ bool VRWorker::CopyScreenToBuffer()
 		return false;
 	}
 
-	uint8_t* dptr = buffer;
+	uint8_t* dptr = m_buffer.get();
 	size_t msize = std::min<size_t>(rowPitch, mapped.RowPitch);
 	for (size_t h = 0; h < rowCount; ++h)
 	{
@@ -623,38 +635,6 @@ bool VRWorker::CopyScreenToBuffer()
 		sptr += mapped.RowPitch;
 		dptr += rowPitch;
 	}
-
-	//uchar* buffer = new uchar[(m_vr_context->width * m_vr_context->height * 4)];
-	/*uchar* buffer2 = new uchar[(m_vr_context->width * m_vr_context->height * 4)];
-
-	std::unique_ptr<uint8_t[]> pixels(new (std::nothrow) uint8_t[slicePitch]);
-	if (!pixels)
-	{
-		return false;
-	}
-
-	uint8_t* dptr = pixels.get();
-	size_t msize = std::min<size_t>(rowPitch, mapped.RowPitch);
-	for (size_t h = 0; h < rowCount; ++h)
-	{
-		memcpy_s(dptr, rowPitch, sptr, msize);
-		sptr += mapped.RowPitch;
-		dptr += rowPitch;
-	}*/
-
-	//memcpy(buffer, sptr, (context->width * context->height * 4));
-
-
-	//// OpenCV IplImage Convertion
-	//IplImage* frame = cvCreateImageHeader(cvSize(context->width, context->height), IPL_DEPTH_8U, 4);
-
-	//frame->imageData = (char*)pixels.get();
-	//frame->imageDataOrigin = frame->imageData;
-
-
-	//cv::Mat u = cv::cvarrToMat(frame);
-
-	//outputVideo.write(u);
 
 	m_vr_context->ctx11->Unmap(pStaging.Get(), 0);
 

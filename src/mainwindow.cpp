@@ -17,7 +17,8 @@ MainWindow::MainWindow(QWidget *parent) :
 	vr->Initalize();
 
 	vw = new XVideoWriter(logger.get());
-	vw->Initialize("libx264", "test_video.avi");
+	vw->Initialize("libx264", "test_video.avi",
+		AVPixelFormat::AV_PIX_FMT_RGBA, vr->GetHeight(), vr->GetWidth());
 
 	if (!vr->IsInitialized() || !vw->IsInitialized())
 	{
@@ -25,15 +26,11 @@ MainWindow::MainWindow(QWidget *parent) :
 		return;
 	}
 
+	vr->CopyScreenToBuffer();
+	auto buf = vr->GetBuffer();
 
-	uint8_t* buffer = new uint8_t()
-	if (!vw->GetFrameBuffer(buffer))
-	{
-		logger->write("Failed get buffer");
-		return;
-	}
+	vw->WriteFrame(buf);
 
-	vr->CopyScreenToBuffer(buffer);
 }
 
 MainWindow::~MainWindow()

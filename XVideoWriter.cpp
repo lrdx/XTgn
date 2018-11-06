@@ -2,6 +2,7 @@
 
 #pragma comment(lib, "ffmpeg/lib/avutil.lib")
 #pragma comment(lib, "ffmpeg/lib/avcodec.lib")
+#pragma comment(lib, "ffmpeg/lib/swscale.lib")
 
 XVideoWriter::XVideoWriter(Logger* logger)
 {
@@ -16,7 +17,7 @@ XVideoWriter::~XVideoWriter()
 	delete m_video_context;
 }
 
-void XVideoWriter::Initialize(const char* codec_name, const char* filename)
+void XVideoWriter::Initialize(const char* codec_name, const char* filename, AVPixelFormat fmt, int height, int width)
 {
 	if (m_initialized)
 		Release();
@@ -107,6 +108,22 @@ void XVideoWriter::Initialize(const char* codec_name, const char* filename)
 		return;
 	}
 
+	if (fmt != m_video_context->frame->format
+		|| width != m_video_context->frame->width
+		|| height != m_video_context->frame->height)
+	{
+		m_video_context->sws_ctx = sws_getContext(width, height, fmt,
+			m_video_context->frame->width, m_video_context->frame->height,
+			static_cast<AVPixelFormat>(m_video_context->frame->format), SWS_BICUBIC, NULL, NULL, NULL);
+
+		if (!m_video_context->sws_ctx)
+		{
+			m_logger->write("Could not allocate the sws context\r\n");
+			Release();
+			return;
+		}
+	}
+
 	m_initialized = true;
 }
 
@@ -124,34 +141,52 @@ void XVideoWriter::Release()
 	if(m_video_context->file)
 		fclose(m_video_context->file);
 
+	if (m_video_context->sws_ctx)
+		sws_freeContext(m_video_context->sws_ctx);
+
 	m_video_context->ctx = nullptr;
 	m_video_context->frame = nullptr;
 	m_video_context->pkt = nullptr;
 	m_video_context->file = nullptr;
+	m_video_context->sws_ctx = nullptr;
 
 	m_initialized = false;
 }
 
-bool XVideoWriter::GetFrameBuffer(uint8_t* buffer)
+void XVideoWriter::CopyBufferWithSws(uint8_t* buf, int rowCount, int rowPitch)
 {
-	if (!m_initialized)
-		return false;
+	auto sptr = buf;
+	auto dptr = m_video_context->tmp_frame->data;
 
-	const auto ret = av_frame_make_writable(m_video_context->frame);
-	if (ret < 0)
+	for (size_t h = 0; h < rowCount; ++h)
 	{
-		m_logger->write("Could not make writable frame");
-		return false;
+		memcpy(dptr, sptr, rowPitch);
+		sptr += rowPitch;
+		dptr += rowPitch;
 	}
 
-	buffer = *m_video_context->frame->data;
-	return true;
+	sws_scale(m_video_context->sws_ctx,
+		(const uint8_t * const *)m_video_context->tmp_frame->data,
+		m_video_context->tmp_frame->linesize, 0, m_video_context->ctx->height, m_video_context->frame->data,
+		m_video_context->frame->linesize);
+
+
 }
 
-void XVideoWriter::WriteFrame()
+void XVideoWriter::WriteFrame(uint8_t* buf, int rowCount)
 {
 	if (!m_initialized)
 		return;
+/*
+	if (m_video_context->sws_ctx)
+	{
+		CopyBufferWithSws(buf, )
+	}*/
+
+	auto sptr = buf;
+	auto dptr = m_video_context->frame->data;
+
+
 
 	auto ret = avcodec_send_frame(m_video_context->ctx, m_video_context->frame);
 	if (ret < 0)
