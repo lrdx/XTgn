@@ -92,48 +92,10 @@ void VRWorker::Initalize()
 
 	m_buffer = std::make_unique<uint8_t[]>(slicePitch);
 	bufferRowCount = rowCount;
-
-
-	//m_buffer = std::make_shared<uint8_t>(desc.Width * desc.Height * 4);
-//	m_buffer = std::make_shared<FrameBuffer>(desc.Width, desc.Height, desc.Format);
+	bufferRowPitch = rowPitch;
+	bufferSlicePitch = slicePitch;
 
 	tex2D->Release();
-
-	//// Create cropped, linear texture
-	//// Using linear here will cause correct sRGB gamma to be applied
-	//desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	//hr = context->dev11->CreateTexture2D(&desc, NULL, &context->texCrop);
-	//if (FAILED(hr)) {
-	//	_logger->write("win_openvr_show: CreateTexture2D failed");
-	//	return;
-	//}
-/*
-
-	IDXGIResource *res;
-	hr = context->tex->QueryInterface(__uuidof(IDXGIResource), (void**)&res);
-	if (FAILED(hr)) {
-		_logger->write("win_openvr_show: QueryInterface failed");
-		return;
-	}
-
-	HANDLE handle = NULL;
-	hr = res->GetSharedHandle(&handle);
-	if (FAILED(hr)) {
-		_logger->write("GetSharedHandle failed");
-		return;
-	}
-	res->Release();*/
-
-
-//#if (_WIN32_WINNT >= 0x0A00 /*_WIN32_WINNT_WIN10*/)
-//	Microsoft::WRL::Wrappers::RoInitializeWrapper initialize(RO_INIT_MULTITHREADED);
-//	if (FAILED(initialize))
-//		// error
-//#else
-//	HRESULT hr = CoInitializeEx(nullptr, COINITBASE_MULTITHREADED);
-//	if (FAILED(hr))
-//		// error
-//#endif
 
 	m_logger->write("done\r\n");
 

@@ -23,6 +23,7 @@ struct ffmpeg_context
 	AVFrame* tmp_frame;
 	AVCodecContext* ctx;
 	AVPacket* pkt;
+	int frame_pts;
 	FILE* file;
 	struct SwsContext* sws_ctx;
 };
@@ -37,7 +38,8 @@ public:
 
 	void Initialize(const char* codec_name, const char* filename, AVPixelFormat fmt, int height, int width);
 	void Release();
-	void WriteFrame(uint8_t* buf, int rowCount);
+	void WriteFrame(uint8_t* buf, int rowCount, int rowPitch);
+	void CloseFile();
 
 private:
 	Logger* m_logger;

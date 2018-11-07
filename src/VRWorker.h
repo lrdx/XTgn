@@ -36,6 +36,7 @@ public:
 	const bool IsInitialized() { return m_initialized; }
 	uint8_t* GetBuffer() { return m_buffer.get(); }
 	int GetBufferRowCount() { return bufferRowCount; }
+	int GetBufferRowPitch() { return bufferRowPitch; }
 	const int GetWidth() { return m_vr_context->width; }
 	const int GetHeight() { return m_vr_context->height; }
 
@@ -46,6 +47,8 @@ private:
 
 	bool m_initialized;
 	int bufferRowCount;
+	int bufferRowPitch;
+	int bufferSlicePitch;
 	std::unique_ptr<uint8_t[]> m_buffer;
 
 	openvr_context* m_vr_context;

@@ -13,6 +13,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	logger = std::make_unique<Logger>(this, "log.txt", ui->plainTextEdit);
 
+
 	vr = new VRWorker(logger.get());
 	vr->Initalize();
 
@@ -22,15 +23,36 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	if (!vr->IsInitialized() || !vw->IsInitialized())
 	{
-		logger->write("Failed initialized");
+		logger->write("Failed initialization");
 		return;
 	}
+}
 
-	vr->CopyScreenToBuffer();
-	auto buf = vr->GetBuffer();
+void MainWindow::WatchdogThreadFunction()
+{
+	int count = 0;
 
-	vw->WriteFrame(buf);
+	boost::asio::serial_port serial(io);
+	serial.open("COM4");
+	serial.write_some(boost::asio::buffer("1"));
+	while (count < 50)
+	{
+		vr->CopyScreenToBuffer();
+		vw->WriteFrame(vr->GetBuffer(), vr->GetBufferRowCount(), vr->GetBufferRowPitch());
 
+		++count;
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	}
+
+	logger->write("Write file..");
+	vw->CloseFile();
+}
+
+void MainWindow::showEvent(QShowEvent* event)
+{
+	QWidget::showEvent(event);
+
+	m_pWatchdogThread = new std::thread(&MainWindow::WatchdogThreadFunction, this);
 }
 
 MainWindow::~MainWindow()
