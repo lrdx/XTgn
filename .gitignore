@@ -6,3 +6,6 @@
 /GeneratedFiles
 .qmake.stash
 QtXTgn.vcxproj
+QtXTgn.vcxproj.filters
+QtXTgn.vcxproj.user
+test_video.avi
