@@ -83,45 +83,19 @@ void VRWorker::Initalize()
 	m_vr_context->width = desc.Width;
 	m_vr_context->height = desc.Height;
 
-	m_buffer = std::make_shared<uint8_t>(desc.Width * desc.Height * 4);
+	size_t rowPitch, slicePitch, rowCount;
+	hr = GetSurfaceInfo(desc.Width, desc.Height, desc.Format, &slicePitch, &rowPitch, &rowCount);
+	if (FAILED(hr))
+	{
+		return;
+	}
+
+	m_buffer = std::make_unique<uint8_t[]>(slicePitch);
+	bufferRowCount = rowCount;
+	bufferRowPitch = rowPitch;
+	bufferSlicePitch = slicePitch;
 
 	tex2D->Release();
-
-	//// Create cropped, linear texture
-	//// Using linear here will cause correct sRGB gamma to be applied
-	//desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	//hr = context->dev11->CreateTexture2D(&desc, NULL, &context->texCrop);
-	//if (FAILED(hr)) {
-	//	_logger->write("win_openvr_show: CreateTexture2D failed");
-	//	return;
-	//}
-/*
-
-	IDXGIResource *res;
-	hr = context->tex->QueryInterface(__uuidof(IDXGIResource), (void**)&res);
-	if (FAILED(hr)) {
-		_logger->write("win_openvr_show: QueryInterface failed");
-		return;
-	}
-
-	HANDLE handle = NULL;
-	hr = res->GetSharedHandle(&handle);
-	if (FAILED(hr)) {
-		_logger->write("GetSharedHandle failed");
-		return;
-	}
-	res->Release();*/
-
-
-//#if (_WIN32_WINNT >= 0x0A00 /*_WIN32_WINNT_WIN10*/)
-//	Microsoft::WRL::Wrappers::RoInitializeWrapper initialize(RO_INIT_MULTITHREADED);
-//	if (FAILED(initialize))
-//		// error
-//#else
-//	HRESULT hr = CoInitializeEx(nullptr, COINITBASE_MULTITHREADED);
-//	if (FAILED(hr))
-//		// error
-//#endif
 
 	m_logger->write("done\r\n");
 
@@ -615,7 +589,7 @@ bool VRWorker::CopyScreenToBuffer()
 		return false;
 	}
 
-	uint8_t* dptr = buffer;
+	uint8_t* dptr = m_buffer.get();
 	size_t msize = std::min<size_t>(rowPitch, mapped.RowPitch);
 	for (size_t h = 0; h < rowCount; ++h)
 	{
@@ -623,38 +597,6 @@ bool VRWorker::CopyScreenToBuffer()
 		sptr += mapped.RowPitch;
 		dptr += rowPitch;
 	}
-
-	//uchar* buffer = new uchar[(m_vr_context->width * m_vr_context->height * 4)];
-	/*uchar* buffer2 = new uchar[(m_vr_context->width * m_vr_context->height * 4)];
-
-	std::unique_ptr<uint8_t[]> pixels(new (std::nothrow) uint8_t[slicePitch]);
-	if (!pixels)
-	{
-		return false;
-	}
-
-	uint8_t* dptr = pixels.get();
-	size_t msize = std::min<size_t>(rowPitch, mapped.RowPitch);
-	for (size_t h = 0; h < rowCount; ++h)
-	{
-		memcpy_s(dptr, rowPitch, sptr, msize);
-		sptr += mapped.RowPitch;
-		dptr += rowPitch;
-	}*/
-
-	//memcpy(buffer, sptr, (context->width * context->height * 4));
-
-
-	//// OpenCV IplImage Convertion
-	//IplImage* frame = cvCreateImageHeader(cvSize(context->width, context->height), IPL_DEPTH_8U, 4);
-
-	//frame->imageData = (char*)pixels.get();
-	//frame->imageDataOrigin = frame->imageData;
-
-
-	//cv::Mat u = cv::cvarrToMat(frame);
-
-	//outputVideo.write(u);
 
 	m_vr_context->ctx11->Unmap(pStaging.Get(), 0);
 

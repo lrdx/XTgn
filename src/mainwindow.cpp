@@ -13,27 +13,46 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	logger = std::make_unique<Logger>(this, "log.txt", ui->plainTextEdit);
 
+
 	vr = new VRWorker(logger.get());
 	vr->Initalize();
 
 	vw = new XVideoWriter(logger.get());
-	vw->Initialize("libx264", "test_video.avi");
+	vw->Initialize("libx264", "test_video.avi",
+		AVPixelFormat::AV_PIX_FMT_RGBA, vr->GetHeight(), vr->GetWidth());
 
 	if (!vr->IsInitialized() || !vw->IsInitialized())
 	{
-		logger->write("Failed initialized");
+		logger->write("Failed initialization");
 		return;
 	}
+}
 
+void MainWindow::WatchdogThreadFunction()
+{
+	int count = 0;
 
-	uint8_t* buffer = new uint8_t()
-	if (!vw->GetFrameBuffer(buffer))
+	boost::asio::serial_port serial(io);
+	serial.open("COM4");
+	serial.write_some(boost::asio::buffer("1"));
+	while (count < 50)
 	{
-		logger->write("Failed get buffer");
-		return;
+		vr->CopyScreenToBuffer();
+		vw->WriteFrame(vr->GetBuffer(), vr->GetBufferRowCount(), vr->GetBufferRowPitch());
+
+		++count;
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 
-	vr->CopyScreenToBuffer(buffer);
+	logger->write("Write file..");
+	vw->CloseFile();
+}
+
+void MainWindow::showEvent(QShowEvent* event)
+{
+	QWidget::showEvent(event);
+
+	m_pWatchdogThread = new std::thread(&MainWindow::WatchdogThreadFunction, this);
 }
 
 MainWindow::~MainWindow()

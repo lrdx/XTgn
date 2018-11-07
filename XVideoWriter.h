@@ -11,6 +11,7 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavutil/opt.h>
 #include <libavutil/imgutils.h>
+#include <libswscale/swscale.h>
 #ifdef __cplusplus 
 }
 #endif
@@ -19,9 +20,12 @@ struct ffmpeg_context
 {
 	AVCodec* codec;
 	AVFrame* frame;
+	AVFrame* tmp_frame;
 	AVCodecContext* ctx;
 	AVPacket* pkt;
+	int frame_pts;
 	FILE* file;
+	struct SwsContext* sws_ctx;
 };
 
 class XVideoWriter
@@ -32,10 +36,10 @@ public:
 
 	bool IsInitialized() { return m_initialized; }
 
-	void Initialize(const char* codec_name, const char* filename);
+	void Initialize(const char* codec_name, const char* filename, AVPixelFormat fmt, int height, int width);
 	void Release();
-	bool GetFrameBuffer(uint8_t* buffer);
-	void WriteFrame();
+	void WriteFrame(uint8_t* buf, int rowCount, int rowPitch);
+	void CloseFile();
 
 private:
 	Logger* m_logger;
@@ -43,6 +47,8 @@ private:
 	ffmpeg_context* m_video_context;
 
 	bool m_initialized;
+
+	void CopyBufferWithSws(uint8_t* buf, int rowCount, int rowPitch);
 };
 
 #endif	//__XVIDEO_WRITER_H__
