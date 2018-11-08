@@ -46,14 +46,14 @@ void XVideoWriter::Initialize(const char* codec_name, const char* filename, AVPi
 	}
 
 	/* put sample parameters */
-	m_video_context->ctx->bit_rate = 400000;
+	m_video_context->ctx->bit_rate = 3500000;
 	/* resolution must be a multiple of two */
 	m_video_context->ctx->width = 800;
 	m_video_context->ctx->height = 600;
 	/* frames per second */
-	const AVRational time_base = { 1, 10 };
+	const AVRational time_base = { 1, 30 };
 	m_video_context->ctx->time_base = time_base;
-	const AVRational framerate = { 10, 1 };
+	const AVRational framerate = { 30, 1 };
 	m_video_context->ctx->framerate = framerate;
 
 	/* emit one intra frame every ten frames

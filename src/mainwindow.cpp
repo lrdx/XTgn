@@ -11,12 +11,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	
 	connect(ui->actionExit, &QAction::triggered, this, &QWidget::close);
 	connect(ui->actionStart, &QAction::triggered, this, &MainWindow::StartWrite);
-	connect(ui->actionStop, &QAction::triggered, this, &MainWindow::StartWrite);
+	connect(ui->actionStop, &QAction::triggered, this, &MainWindow::StopWrite);
 
 	logger = std::make_unique<Logger>(this, "log.txt", ui->plainTextEdit);
-
-	boost::asio::io_context io;
-	serial_port = std::make_unique<boost::asio::serial_port>(io, "COM4");
 
 	vr = new VRWorker(logger.get());
 	vr->Initalize();
@@ -47,18 +44,20 @@ void MainWindow::WatchdogThreadFunction()
 {
 	int count = 0;
 
-	serial_port->open("COM4");
-	serial_port->write_some(boost::asio::buffer("1"));
+	boost::asio::io_context io;
+	auto serial_port = boost::asio::serial_port(io, "COM4");
+	serial_port.write_some(boost::asio::buffer("1"));
 	while (thread_worked)
 	{
 		vr->CopyScreenToBuffer();
 		vw->WriteFrame(vr->GetBuffer(), vr->GetBufferRowCount(), vr->GetBufferRowPitch());
 
 		++count;
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		std::this_thread::sleep_for(std::chrono::milliseconds(33));
 	}
 
 	vw->CloseFile();
+	serial_port.close();
 	logger->write("Write file..");
 }
 

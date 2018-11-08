@@ -9,6 +9,7 @@
 extern "C" {
 #endif
 #include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
 #include <libavutil/opt.h>
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
@@ -45,7 +46,7 @@ private:
 	Logger* m_logger;
 
 	ffmpeg_context* m_video_context;
-
+	
 	bool m_initialized;
 
 	void CopyBufferWithSws(uint8_t* buf, int rowCount, int rowPitch);
