@@ -22,17 +22,29 @@ DEFINES += QT_DEPRECATED_WARNINGS
 # You can also select to disable deprecated APIs only up to a certain version of Qt.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
-CONFIG += c++11
+CONFIG += c++11                                        
 
-SOURCES += \
-        main.cpp \
-        mainwindow.cpp
+SOURCES += \            
+    src/Logger.cpp \
+    src/main.cpp \
+    src/mainwindow.cpp \
+    src/VRWorker.cpp \
+    src/XVideoWriter.cpp
 
-HEADERS += \
-        mainwindow.h
+
+HEADERS += \            
+    src/Logger.h \
+    src/mainwindow.h \
+    src/VRWorker.h \
+    src/XVideoWriter.h \
+    src/FrameBuffer.h \
+    src/Logger.h \
+    src/mainwindow.h \
+    src/VRWorker.h \
+    src/XVideoWriter.h
 
 FORMS += \
-        mainwindow.ui
+        ui/mainwindow.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

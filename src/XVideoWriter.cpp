@@ -46,7 +46,7 @@ void XVideoWriter::Initialize(const char* codec_name, const char* filename, AVPi
 	}
 
 	/* put sample parameters */
-	m_video_context->ctx->bit_rate = 800000;
+	m_video_context->ctx->bit_rate = 400000;
 	/* resolution must be a multiple of two */
 	m_video_context->ctx->width = 800;
 	m_video_context->ctx->height = 600;

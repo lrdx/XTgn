@@ -34,13 +34,17 @@ protected:
 private:
     Ui::MainWindow* ui;
 
-	boost::asio::io_context io;
+	std::unique_ptr<boost::asio::serial_port> serial_port;
 	std::thread* m_pWatchdogThread;
 	std::unique_ptr<Logger> logger;
 	VRWorker* vr;
 	XVideoWriter* vw;
 
+	bool thread_worked = false;
+
 	void WatchdogThreadFunction();
+	void StartWrite();
+	void StopWrite();
 };
 
 #endif // __MAIN_WINDOW_H__
