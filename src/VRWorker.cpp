@@ -7,11 +7,7 @@
 
 #pragma comment(lib, "d3d11.lib")
 
-#ifdef _WIN64
-#pragma comment(lib, "openvr/lib/win64/openvr_api.lib")
-#else
-#pragma comment(lib, "openvr/lib/win32/openvr_api.lib")
-#endif
+#pragma comment(lib, "win64/openvr_api.lib")
 
 VRWorker::VRWorker(Logger* logger)
 	: m_logger(logger), m_initialized(false)

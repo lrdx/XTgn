@@ -7,7 +7,6 @@
 
 #include <QMainWindow>
 
-#include <boost/asio.hpp>
 
 QT_BEGIN_NAMESPACE
 class QAction;
@@ -34,16 +33,16 @@ protected:
 private:
     Ui::MainWindow* ui;
 
-	std::thread* m_pWatchdogThread;
 	std::unique_ptr<Logger> logger;
+	std::thread* pWatchdogThread;
 	VRWorker* vr;
 	XVideoWriter* vw;
 
 	bool thread_worked = false;
 
 	void WatchdogThreadFunction();
-	void StartWrite();
-	void StopWrite();
+	void StartExpirement();
+	void StopExpirement();
 };
 
 #endif // __MAIN_WINDOW_H__

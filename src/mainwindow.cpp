@@ -1,6 +1,8 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+#include <boost/asio.hpp>
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -10,8 +12,8 @@ MainWindow::MainWindow(QWidget *parent) :
 	setCentralWidget(ui->plainTextEdit);
 	
 	connect(ui->actionExit, &QAction::triggered, this, &QWidget::close);
-	connect(ui->actionStart, &QAction::triggered, this, &MainWindow::StartWrite);
-	connect(ui->actionStop, &QAction::triggered, this, &MainWindow::StopWrite);
+	connect(ui->actionStart, &QAction::triggered, this, &MainWindow::StartExpirement);
+	connect(ui->actionStop, &QAction::triggered, this, &MainWindow::StopExpirement);
 
 	logger = std::make_unique<Logger>(this, "log.txt", ui->plainTextEdit);
 
@@ -29,13 +31,13 @@ MainWindow::MainWindow(QWidget *parent) :
 	}
 }
 
-void MainWindow::StartWrite()
+void MainWindow::StartExpirement()
 {
 	thread_worked = true;
-	m_pWatchdogThread = new std::thread(&MainWindow::WatchdogThreadFunction, this);
+	pWatchdogThread = new std::thread(&MainWindow::WatchdogThreadFunction, this);
 }
 
-void MainWindow::StopWrite()
+void MainWindow::StopExpirement()
 {
 	thread_worked = false;
 }

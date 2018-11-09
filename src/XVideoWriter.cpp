@@ -1,8 +1,8 @@
 #include "XVideoWriter.h"
 
-#pragma comment(lib, "ffmpeg/lib/avutil.lib")
-#pragma comment(lib, "ffmpeg/lib/avcodec.lib")
-#pragma comment(lib, "ffmpeg/lib/swscale.lib")
+#pragma comment(lib, "avutil.lib")
+#pragma comment(lib, "avcodec.lib")
+#pragma comment(lib, "swscale.lib")
 
 XVideoWriter::XVideoWriter(Logger* logger)
 {
