@@ -5,9 +5,9 @@
 /x64
 /GeneratedFiles
 .qmake.stash
-QtXtgn.sln
-QtXTgn.vcxproj
-QtXTgn.vcxproj.filters
-QtXTgn.vcxproj.user
+Xtgn.sln
+XTgn.vcxproj
+XTgn.vcxproj.filters
+XTgn.vcxproj.user
 test_video.avi
 log.txt

@@ -22,7 +22,13 @@ DEFINES += QT_DEPRECATED_WARNINGS
 # You can also select to disable deprecated APIs only up to a certain version of Qt.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
-CONFIG += c++11                                        
+CONFIG += c++11
+
+DEFINES += \
+	WIN32_LEAN_AND_MEAN \
+	BOOST_DATE_TIME_NO_LIB \
+	BOOST_REGEX_NO_LIB
+	
 
 SOURCES += \            
     src/Logger.cpp \
@@ -36,8 +42,7 @@ HEADERS += \
     src/Logger.h \
     src/mainwindow.h \
     src/VRWorker.h \
-    src/XVideoWriter.h \
-    src/FrameBuffer.h \
+    src/XVideoWriter.h \            
     src/Logger.h \
     src/mainwindow.h \
     src/VRWorker.h \
