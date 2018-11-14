@@ -14,7 +14,7 @@ Logger::Logger(QObject *parent, QString fileName, QPlainTextEdit *editor) : QObj
 	}
 }
 
-void Logger::write(const QString &value) 
+void Logger::write(const QString& value) 
 {
 	QString text = value;// + "";
 	if (m_showDate)
@@ -22,21 +22,21 @@ void Logger::write(const QString &value)
 
 	QTextStream out(file);
 	out.setCodec("UTF-8");
-	if (file != 0) 
+	if (file != nullptr) 
 	{
 		out << text;
 	}
-	if (m_editor != 0)
+	if (m_editor != nullptr)
 		m_editor->appendPlainText(text);
 }
 
-void Logger::setShowDateTime(bool value) 
+void Logger::setShowDateTime(const bool value) 
 {
 	m_showDate = value;
 }
 
 Logger::~Logger() 
 {
-	if (file != 0)
+	if (file != nullptr)
 		file->close();
 }

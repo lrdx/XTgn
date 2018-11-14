@@ -1,7 +1,6 @@
 #ifndef __LOGGER_H__
 #define __LOGGER_H__
 
-#include <QObject>
 #include <QPlainTextEdit>
 #include <QFile>
 #include <QTextStream>
@@ -10,12 +9,12 @@ class Logger : public QObject
 {
 	Q_OBJECT
 public:
-	explicit Logger(QObject *parent, QString fileName, QPlainTextEdit *editor = 0);
+	explicit Logger(QObject *parent, QString fileName, QPlainTextEdit *editor = nullptr);
 	~Logger();
 	void setShowDateTime(bool value);
 
 private:
-	QFile *file;
+	QFile* file;
 	QPlainTextEdit *m_editor;
 	bool m_showDate;
 

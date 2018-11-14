@@ -6,7 +6,13 @@
 #include "XVideoWriter.h"
 
 #include <QMainWindow>
+#include <QSettings>
 
+namespace boost {
+	namespace asio {
+		class serial_port;
+	}
+}
 
 QT_BEGIN_NAMESPACE
 class QAction;
@@ -28,21 +34,27 @@ public:
     ~MainWindow();
 
 protected:
-	void showEvent(QShowEvent* event);
+	void showEvent(QShowEvent* event) override;
+	void closeEvent(QCloseEvent* event) override;
 
 private:
     Ui::MainWindow* ui;
+	QSettings* settings;
 
-	std::unique_ptr<Logger> logger;
-	std::thread* pWatchdogThread;
+	std::vector<std::string> encoders;
+
+	Logger* logger;
 	VRWorker* vr;
 	XVideoWriter* vw;
 
+	std::unique_ptr<std::thread> pWatchdogThread;
 	bool thread_worked = false;
 
-	void WatchdogThreadFunction();
+public slots:
 	void StartExpirement();
 	void StopExpirement();
+	void NewExpirement();
+	void OpenSettingsWindow();
 };
 
 #endif // __MAIN_WINDOW_H__

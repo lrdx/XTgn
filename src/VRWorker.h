@@ -1,7 +1,7 @@
-#ifndef __VRWorker_H__
-#define __VRWorker_H__
+#ifndef __VRWORKER_H__
+#define __VRWORKER_H__
 
-#include "logger.h"
+#include "Logger.h"
 
 #include <memory>
 #include <thread>
@@ -30,15 +30,18 @@ public:
 	VRWorker(Logger* logger);
 	~VRWorker();
 
-	void Initalize();
+	void Initalize(bool isRightEye);
 	void Release();
 
-	const bool IsInitialized() { return m_initialized; }
-	uint8_t* GetBuffer() { return m_buffer.get(); }
-	int GetBufferRowCount() { return bufferRowCount; }
-	int GetBufferRowPitch() { return bufferRowPitch; }
-	const int GetWidth() { return m_vr_context->width; }
-	const int GetHeight() { return m_vr_context->height; }
+	bool IsInitialized() const { return m_initialized; }
+
+	uint8_t* GetBuffer() const { return m_buffer.get(); }	
+	int GetBufferRowCount() const { return bufferRowCount; }
+	int GetBufferRowPitch() const { return bufferRowPitch; }
+	int GetWidth() const { return m_vr_context->width; }
+	int GetHeight() const { return m_vr_context->height; }
+
+	DXGI_FORMAT GetFormat() const { return m_format; }
 
 	bool CopyScreenToBuffer();
 
@@ -51,7 +54,9 @@ private:
 	int bufferSlicePitch;
 	std::unique_ptr<uint8_t[]> m_buffer;
 
-	openvr_context* m_vr_context;
+	DXGI_FORMAT m_format;
+
+	std::unique_ptr<openvr_context> m_vr_context;
 
 	HRESULT CaptureTexture(
 		_In_ ID3D11DeviceContext* pContext,
@@ -70,4 +75,4 @@ private:
 		_Out_opt_ size_t* outNumRows);
 };
 
-#endif //__VRWorker_H__
+#endif //__VRWORKER_H__

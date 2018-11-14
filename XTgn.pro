@@ -49,7 +49,8 @@ HEADERS += \
     src/XVideoWriter.h
 
 FORMS += \
-        ui/mainwindow.ui
+        ui/mainwindow.ui \
+	ui/settings.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

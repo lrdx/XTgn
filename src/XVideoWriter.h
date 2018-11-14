@@ -1,7 +1,9 @@
 #ifndef __XVIDEO_WRITER_H__
 #define __XVIDEO_WRITER_H__
 
-#include "logger.h"
+#include "Logger.h"
+
+#include "d3d11.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,24 +29,45 @@ struct ffmpeg_context
 class XVideoWriter
 {
 public:
+	static std::vector<std::string> GetAllEncoders();
+
+public:
 	XVideoWriter(Logger* logger);
 	~XVideoWriter();
 
-	bool IsInitialized() { return m_initialized; }
+	bool IsInitialized() const { return m_initialized; }
 
-	void Initialize(const char* codec_name, const char* filename, AVPixelFormat fmt, int height, int width);
+	void Initialize(const std::string& filename,
+		const std::string& codec_name,
+		int videoBitrate,
+		int videoWidth,
+		int videoHeight,
+		int videoFramerate,
+		DXGI_FORMAT format,
+		int height,
+		int width);
+	void Initialize(const std::string& filename,
+		const std::string& codec_name,
+		int videoBitrate,
+		int videoWidth,
+		int videoHeight,
+		int videoFramerate,
+		AVPixelFormat format,
+		int height,
+		int width);
 	void Release();
-	void WriteFrame(uint8_t* buf, int rowCount, int rowPitch);
+	void WriteFrame(uint8_t* buf, int row_count, int row_pitch);
 	void CloseFile();
 
 private:
 	Logger* m_logger;
 
-	ffmpeg_context* m_video_context;
+	std::unique_ptr<ffmpeg_context> m_video_context;
 	
 	bool m_initialized;
 
-	void CopyBufferWithSws(uint8_t* buf, int rowCount, int rowPitch);
+	void CopyBufferWithSws(uint8_t* buf, int row_count, int row_pitch);
+	AVPixelFormat ConvertDXGItoAV(DXGI_FORMAT fmt);
 };
 
 #endif	//__XVIDEO_WRITER_H__

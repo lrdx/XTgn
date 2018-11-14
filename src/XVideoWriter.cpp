@@ -1,36 +1,99 @@
 #include "XVideoWriter.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include <libavdevice/avdevice.h>
+#ifdef __cplusplus 
+}
+#endif
+
 #pragma comment(lib, "avutil.lib")
 #pragma comment(lib, "avcodec.lib")
 #pragma comment(lib, "swscale.lib")
 
 XVideoWriter::XVideoWriter(Logger* logger)
+	: m_logger(logger), m_initialized(false)
 {
-	m_initialized = false;
-	m_logger = logger;
-	m_video_context = new ffmpeg_context();
+	m_video_context = std::make_unique<ffmpeg_context>();
 }
 
 XVideoWriter::~XVideoWriter()
 {
 	Release();
-	delete m_video_context;
 }
 
-void XVideoWriter::Initialize(const char* codec_name, const char* filename, AVPixelFormat fmt, int height, int width)
+void XVideoWriter::Release()
 {
+	if (m_video_context->ctx)
+		avcodec_free_context(&m_video_context->ctx);
+
+	if (m_video_context->frame)
+		av_frame_free(&m_video_context->frame);
+
+	if (m_video_context->tmp_frame)
+		av_frame_free(&m_video_context->tmp_frame);
+
+	if (m_video_context->pkt)
+		av_packet_free(&m_video_context->pkt);
+
+	if (m_video_context->file)
+		fclose(m_video_context->file);
+
+	if (m_video_context->sws_ctx)
+		sws_freeContext(m_video_context->sws_ctx);
+
+	m_video_context->ctx = nullptr;
+	m_video_context->frame = nullptr;
+	m_video_context->tmp_frame = nullptr;
+	m_video_context->pkt = nullptr;
+	m_video_context->file = nullptr;
+	m_video_context->sws_ctx = nullptr;
+
+	m_initialized = false;
+}
+
+void XVideoWriter::Initialize(const std::string& filename,
+	const std::string& codecName,
+	int videoBitrate,
+	int videoWidth,
+	int videoHeight,
+	int videoFramerate,
+	DXGI_FORMAT format,
+	int height,
+	int width)
+{
+	Initialize(filename, codecName, videoBitrate, videoWidth, videoHeight, videoFramerate, ConvertDXGItoAV(format), height, width);
+}
+
+void XVideoWriter::Initialize(const std::string& filename,
+	const std::string& codecName,
+	int videoBitrate,
+	int videoWidth,
+	int videoHeight,
+	int videoFramerate,
+	AVPixelFormat format,
+	int height,
+	int width)
+{
+	if(format == AV_PIX_FMT_NONE)
+	{
+		m_logger->write("Screen format unknown");
+		return;
+	}
+
 	if (m_initialized)
 		Release();
 
 	//Find encoder
-	m_video_context->codec = avcodec_find_encoder_by_name(codec_name);
+	m_video_context->codec = avcodec_find_encoder_by_name(codecName.c_str());
 	if (!m_video_context->codec)
 	{
-		m_logger->write(QString("Codec %s not found. Using uncompressed video\r\n").arg(codec_name));
+		m_logger->write(QString("Codec %s not found. Using uncompressed video\r\n").arg(codecName.c_str()));
 	}
 
 	m_video_context->ctx = avcodec_alloc_context3(m_video_context->codec);
-	if (!m_video_context->ctx) 
+	if (!m_video_context->ctx)
 	{
 		Release();
 		m_logger->write("Could not allocate video codec context\r\n");
@@ -46,15 +109,15 @@ void XVideoWriter::Initialize(const char* codec_name, const char* filename, AVPi
 	}
 
 	/* put sample parameters */
-	m_video_context->ctx->bit_rate = 3500000;
+	m_video_context->ctx->bit_rate = videoBitrate;
 	/* resolution must be a multiple of two */
-	m_video_context->ctx->width = 800;
-	m_video_context->ctx->height = 600;
+	m_video_context->ctx->width = videoWidth;
+	m_video_context->ctx->height = videoHeight;
 	/* frames per second */
-	const AVRational time_base = { 1, 30 };
-	m_video_context->ctx->time_base = time_base;
-	const AVRational framerate = { 30, 1 };
-	m_video_context->ctx->framerate = framerate;
+	const AVRational tb = { 1, videoFramerate };
+	m_video_context->ctx->time_base = tb;
+	const AVRational fr = { videoFramerate, 1 };
+	m_video_context->ctx->framerate = fr;
 
 	/* emit one intra frame every ten frames
 	 * check frame pict_type before passing frame
@@ -70,7 +133,7 @@ void XVideoWriter::Initialize(const char* codec_name, const char* filename, AVPi
 		av_opt_set(m_video_context->ctx->priv_data, "preset", "slow", 0);
 
 	/* open it */
-	auto ret = avcodec_open2(m_video_context->ctx, m_video_context->codec, NULL);
+	auto ret = avcodec_open2(m_video_context->ctx, m_video_context->codec, nullptr);
 	if (ret < 0)
 	{
 		char str_err[256];
@@ -80,11 +143,11 @@ void XVideoWriter::Initialize(const char* codec_name, const char* filename, AVPi
 		return;
 	}
 
-	m_video_context->file = fopen(filename, "wb");
+	m_video_context->file = fopen(filename.c_str(), "wb");
 	if (!m_video_context->file) 
 	{
 		Release();
-		m_logger->write(QString("Could not open file: %s\r\n").arg(filename));
+		m_logger->write(QString("Could not open file: %s\r\n").arg(filename.c_str()));
 		return;
 	}
 
@@ -108,11 +171,11 @@ void XVideoWriter::Initialize(const char* codec_name, const char* filename, AVPi
 		return;
 	}
 
-	if (fmt != m_video_context->frame->format
+	if (format != m_video_context->frame->format
 		|| width != m_video_context->frame->width
 		|| height != m_video_context->frame->height)
 	{
-		m_video_context->sws_ctx = sws_getContext(width, height, fmt,
+		m_video_context->sws_ctx = sws_getContext(width, height, format,
 			m_video_context->frame->width, m_video_context->frame->height,
 			static_cast<AVPixelFormat>(m_video_context->frame->format), SWS_BICUBIC, NULL, NULL, NULL);
 
@@ -131,7 +194,7 @@ void XVideoWriter::Initialize(const char* codec_name, const char* filename, AVPi
 			return;
 		}
 
-		m_video_context->tmp_frame->format = fmt;
+		m_video_context->tmp_frame->format = format;
 		m_video_context->tmp_frame->width = width;
 		m_video_context->tmp_frame->height = height;
 
@@ -146,36 +209,6 @@ void XVideoWriter::Initialize(const char* codec_name, const char* filename, AVPi
 
 	m_video_context->frame_pts = 0;
 	m_initialized = true;
-}
-
-void XVideoWriter::Release()
-{
-	if(m_video_context->ctx)
-		avcodec_free_context(&m_video_context->ctx);
-
-	if(m_video_context->frame)
-		av_frame_free(&m_video_context->frame);
-
-	if (m_video_context->tmp_frame)
-		av_frame_free(&m_video_context->tmp_frame);
-
-	if(m_video_context->pkt)
-		av_packet_free(&m_video_context->pkt);
-
-	if(m_video_context->file)
-		fclose(m_video_context->file);
-
-	if (m_video_context->sws_ctx)
-		sws_freeContext(m_video_context->sws_ctx);
-
-	m_video_context->ctx = nullptr;
-	m_video_context->frame = nullptr;
-	m_video_context->tmp_frame = nullptr;
-	m_video_context->pkt = nullptr;
-	m_video_context->file = nullptr;
-	m_video_context->sws_ctx = nullptr;
-
-	m_initialized = false;
 }
 
 void XVideoWriter::CopyBufferWithSws(uint8_t* buf, int rowCount, int rowPitch)
@@ -196,7 +229,18 @@ void XVideoWriter::CopyBufferWithSws(uint8_t* buf, int rowCount, int rowPitch)
 		m_video_context->frame->linesize);
 }
 
-void XVideoWriter::WriteFrame(uint8_t* buf, int rowCount, int rowPitch)
+AVPixelFormat XVideoWriter::ConvertDXGItoAV(const DXGI_FORMAT fmt)
+{
+	switch(fmt)
+	{
+	case DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_UINT:
+		return AVPixelFormat::AV_PIX_FMT_RGBA;
+	default:
+		return AVPixelFormat::AV_PIX_FMT_NONE;
+	}
+}
+
+void XVideoWriter::WriteFrame(uint8_t* buf, int row_count, int row_pitch)
 {
 	if (!m_initialized)
 		return;
@@ -209,7 +253,7 @@ void XVideoWriter::WriteFrame(uint8_t* buf, int rowCount, int rowPitch)
 
 	if (m_video_context->sws_ctx)
 	{
-		CopyBufferWithSws(buf, rowCount, rowPitch);
+		CopyBufferWithSws(buf, row_count, row_pitch);
 	}
 
 	m_video_context->frame->pts = m_video_context->frame_pts++;
@@ -239,11 +283,33 @@ void XVideoWriter::WriteFrame(uint8_t* buf, int rowCount, int rowPitch)
 
 void XVideoWriter::CloseFile()
 {
+	if (!m_initialized)
+		return;
+
 	const uint8_t endcode[] = { 0, 0, 1, 0xb7 };
 	std::fflush(stdout);
-	avcodec_send_frame(m_video_context->ctx, NULL);
+	avcodec_send_frame(m_video_context->ctx, nullptr);
 	fwrite(endcode, 1, sizeof(endcode), m_video_context->file);
 	fclose(m_video_context->file);
 
 	Release();
+}
+
+
+
+std::vector<std::string> XVideoWriter::GetAllEncoders()
+{
+	std::vector<std::string> vec;
+
+	void* opaque = nullptr;
+	auto codec = av_codec_iterate(&opaque);
+	while(codec)
+	{
+		if (av_codec_is_encoder(codec))
+			vec.emplace_back(codec->name);
+
+		codec = av_codec_iterate(&opaque);
+	}
+
+	return vec;
 }

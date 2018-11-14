@@ -12,21 +12,20 @@
 VRWorker::VRWorker(Logger* logger)
 	: m_logger(logger), m_initialized(false)
 {
-	m_vr_context = new openvr_context();
+	m_vr_context = std::make_unique<openvr_context>();
 
 	m_vr_context->ctx11 = nullptr;
 	m_vr_context->dev11 = nullptr;
 	m_vr_context->mirrorSrv = nullptr;
 	m_vr_context->tex = nullptr;
-};
+}
 
 VRWorker::~VRWorker()
 {
 	Release();
-	delete m_vr_context;
 }
 
-void VRWorker::Initalize()
+void VRWorker::Initalize(const bool isRightEye)
 {
 	m_logger->write("Try to initialize OpenVR...");
 
@@ -40,17 +39,15 @@ void VRWorker::Initalize()
 		return;
 	}
 
-	HRESULT hr;
 	D3D_FEATURE_LEVEL featureLevel;
-	hr = D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, 0, 0, 0, 0, D3D11_SDK_VERSION, &m_vr_context->dev11, &featureLevel, &m_vr_context->ctx11);
-	if (FAILED(hr))
+	if (!SUCCEEDED(D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, 0, 0, 0, 0, D3D11_SDK_VERSION, &m_vr_context->dev11, &featureLevel, &m_vr_context->ctx11)))
 	{
 		m_logger->write("D3D11CreateDevice failed\r\n");
 		return;
 	}
 
-	vr::VRCompositor()->GetMirrorTextureD3D11(vr::Eye_Right, m_vr_context->dev11, (void**)&m_vr_context->mirrorSrv);
-	if (!m_vr_context->mirrorSrv)
+	const auto err_comp = vr::VRCompositor()->GetMirrorTextureD3D11(isRightEye ? vr::Eye_Right : vr::Eye_Left, m_vr_context->dev11, reinterpret_cast<void**>(&m_vr_context->mirrorSrv));
+	if (err_comp != vr::EVRCompositorError::VRCompositorError_None || !m_vr_context->mirrorSrv)
 	{
 		m_logger->write("GetMirrorTextureD3D11 failed\r\n");
 		return;
@@ -65,9 +62,9 @@ void VRWorker::Initalize()
 	}
 
 	// Get the size from Texture2D
-	ID3D11Texture2D *tex2D;
-	m_vr_context->tex->QueryInterface<ID3D11Texture2D>(&tex2D);
-	if (!tex2D)
+	ID3D11Texture2D* tex2D;
+	
+	if (!SUCCEEDED(m_vr_context->tex->QueryInterface<ID3D11Texture2D>(&tex2D)) || !tex2D)
 	{
 		m_logger->write("QueryInterface failed\r\n");
 		return;
@@ -76,12 +73,13 @@ void VRWorker::Initalize()
 	D3D11_TEXTURE2D_DESC desc;
 	tex2D->GetDesc(&desc);
 
+	m_format = desc.Format;
+
 	m_vr_context->width = desc.Width;
 	m_vr_context->height = desc.Height;
 
 	size_t rowPitch, slicePitch, rowCount;
-	hr = GetSurfaceInfo(desc.Width, desc.Height, desc.Format, &slicePitch, &rowPitch, &rowCount);
-	if (FAILED(hr))
+	if (!SUCCEEDED(GetSurfaceInfo(desc.Width, desc.Height, desc.Format, &slicePitch, &rowPitch, &rowCount)))
 	{
 		return;
 	}
@@ -93,7 +91,7 @@ void VRWorker::Initalize()
 
 	tex2D->Release();
 
-	m_logger->write("done\r\n");
+	m_logger->write("Successful initalization OpenVR\r\n");
 
 	m_initialized = true;
 }
@@ -121,6 +119,48 @@ void VRWorker::Release()
 	m_vr_context->dev11 = nullptr;
 	m_vr_context->mirrorSrv = nullptr;
 	m_vr_context->tex = nullptr;
+}
+
+bool VRWorker::CopyScreenToBuffer()
+{
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> pStaging;
+	D3D11_TEXTURE2D_DESC desc = {};
+	CaptureTexture(m_vr_context->ctx11, m_vr_context->tex, desc, pStaging);
+
+	D3D11_MAPPED_SUBRESOURCE mapped;
+	auto hr = m_vr_context->ctx11->Map(pStaging.Get(), 0, D3D11_MAP_READ, 0, &mapped);
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	auto sptr = static_cast<const char*>(mapped.pData);
+	if (!sptr)
+	{
+		m_vr_context->ctx11->Unmap(pStaging.Get(), 0);
+		return false;
+	}
+
+	size_t rowPitch, slicePitch, rowCount;
+	hr = GetSurfaceInfo(desc.Width, desc.Height, desc.Format, &slicePitch, &rowPitch, &rowCount);
+	if (FAILED(hr))
+	{
+		m_vr_context->ctx11->Unmap(pStaging.Get(), 0);
+		return false;
+	}
+
+	uint8_t* dptr = m_buffer.get();
+	size_t msize = std::min<size_t>(rowPitch, mapped.RowPitch);
+	for (size_t h = 0; h < rowCount; ++h)
+	{
+		memcpy_s(dptr, rowPitch, sptr, msize);
+		sptr += mapped.RowPitch;
+		dptr += rowPitch;
+	}
+
+	m_vr_context->ctx11->Unmap(pStaging.Get(), 0);
+
+	return true;
 }
 
 HRESULT VRWorker::CaptureTexture(
@@ -555,46 +595,4 @@ HRESULT VRWorker::GetSurfaceInfo(
 	}
 
 	return S_OK;
-}
-
-bool VRWorker::CopyScreenToBuffer()
-{
-	Microsoft::WRL::ComPtr<ID3D11Texture2D> pStaging;
-	D3D11_TEXTURE2D_DESC desc = {};
-	CaptureTexture(m_vr_context->ctx11, m_vr_context->tex, desc, pStaging);
-
-	D3D11_MAPPED_SUBRESOURCE mapped;
-	auto hr = m_vr_context->ctx11->Map(pStaging.Get(), 0, D3D11_MAP_READ, 0, &mapped);
-	if (FAILED(hr))
-	{
-		return false;
-	}
-
-	auto sptr = static_cast<const char*>(mapped.pData);
-	if (!sptr)
-	{
-		m_vr_context->ctx11->Unmap(pStaging.Get(), 0);
-		return false;
-	}
-
-	size_t rowPitch, slicePitch, rowCount;
-	hr = GetSurfaceInfo(desc.Width, desc.Height, desc.Format, &slicePitch, &rowPitch, &rowCount);
-	if (FAILED(hr))
-	{
-		m_vr_context->ctx11->Unmap(pStaging.Get(), 0);
-		return false;
-	}
-
-	uint8_t* dptr = m_buffer.get();
-	size_t msize = std::min<size_t>(rowPitch, mapped.RowPitch);
-	for (size_t h = 0; h < rowCount; ++h)
-	{
-		memcpy_s(dptr, rowPitch, sptr, msize);
-		sptr += mapped.RowPitch;
-		dptr += rowPitch;
-	}
-
-	m_vr_context->ctx11->Unmap(pStaging.Get(), 0);
-
-	return true;
 }
