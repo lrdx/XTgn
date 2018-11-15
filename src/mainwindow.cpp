@@ -24,9 +24,6 @@ MainWindow::MainWindow(QWidget *parent) :
 	connect(ui->actionNew_Expirement, &QAction::triggered, this, &MainWindow::NewExpirement);
 	connect(ui->actionSettings, &QAction::triggered, this, &MainWindow::OpenSettingsWindow);
 
-
-	encoders = XVideoWriter::GetAllEncoders();
-
 	logger = new Logger(this, "log.txt", ui->plainTextEdit);
 	vr = new VRWorker(logger);
 	vw = new XVideoWriter(logger);
@@ -46,6 +43,12 @@ void MainWindow::NewExpirement()
 {
 	vr->Initalize(settings->value("eyeVR", "right").toString().compare("right", Qt::CaseInsensitive) == 0);
 
+	if (!vr->IsInitialized())
+	{
+		logger->write("VR failed initialization");
+		return;
+	}
+
 	const auto filename = QFileDialog::getSaveFileName(this, "Save file", QDir::currentPath());
 
 	if(filename.isEmpty())
@@ -63,9 +66,9 @@ void MainWindow::NewExpirement()
 		vr->GetWidth(),
 		vr->GetHeight());
 
-	if (!vr->IsInitialized() || !vw->IsInitialized())
+	if (!vw->IsInitialized())
 	{
-		logger->write("Failed initialization");
+		logger->write("VideoWriter failed initialization");
 		return;
 	}
 }
@@ -76,6 +79,13 @@ void MainWindow::StartExpirement()
 	{
 		logger->write("VR or videowriter uninitialized");
 		return;
+	}
+
+	if(thread_worked)
+	{
+		logger->write("Thread is working. Waiting shutdown...");
+		thread_worked = false;
+		pWatchdogThread->join();
 	}
 
 	thread_worked = true;
@@ -99,7 +109,9 @@ void MainWindow::StartExpirement()
 			const auto endTime = std::chrono::high_resolution_clock::now();
 			const auto lastedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
 			logger->write(QString("Copy screen to buffer lasted %d ms").arg(lastedTime));
-			std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(std::round(1000 / framerate - lastedTime))));
+			const auto sleepTime = std::chrono::milliseconds(static_cast<int>(std::round(1000 / framerate - lastedTime)));
+			logger->write(QString("Sleep on %d ms").arg(sleepTime.count()));
+			std::this_thread::sleep_for(sleepTime);
 		}
 
 		vw->CloseFile();

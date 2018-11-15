@@ -56,7 +56,7 @@ public:
 		int height,
 		int width);
 	void Release();
-	void WriteFrame(uint8_t* buf, int row_count, int row_pitch);
+	void WriteFrame(uint8_t* buf, int rowCount, int rowPitch);
 	void CloseFile();
 
 private:
@@ -66,7 +66,7 @@ private:
 	
 	bool m_initialized;
 
-	void CopyBufferWithSws(uint8_t* buf, int row_count, int row_pitch);
+	void CopyBufferWithSws(uint8_t* buf, int rowCount, int rowPitch);
 	AVPixelFormat ConvertDXGItoAV(DXGI_FORMAT fmt);
 };
 

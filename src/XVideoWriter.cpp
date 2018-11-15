@@ -224,23 +224,12 @@ void XVideoWriter::CopyBufferWithSws(uint8_t* buf, int rowCount, int rowPitch)
 	}
 
 	sws_scale(m_video_context->sws_ctx,
-		(const uint8_t * const *)m_video_context->tmp_frame->data,
+		static_cast<const uint8_t * const *>(m_video_context->tmp_frame->data),
 		m_video_context->tmp_frame->linesize, 0, m_video_context->tmp_frame->height, m_video_context->frame->data,
 		m_video_context->frame->linesize);
 }
 
-AVPixelFormat XVideoWriter::ConvertDXGItoAV(const DXGI_FORMAT fmt)
-{
-	switch(fmt)
-	{
-	case DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_UINT:
-		return AVPixelFormat::AV_PIX_FMT_RGBA;
-	default:
-		return AVPixelFormat::AV_PIX_FMT_NONE;
-	}
-}
-
-void XVideoWriter::WriteFrame(uint8_t* buf, int row_count, int row_pitch)
+void XVideoWriter::WriteFrame(uint8_t* buf, int rowCount, int rowPitch)
 {
 	if (!m_initialized)
 		return;
@@ -253,7 +242,7 @@ void XVideoWriter::WriteFrame(uint8_t* buf, int row_count, int row_pitch)
 
 	if (m_video_context->sws_ctx)
 	{
-		CopyBufferWithSws(buf, row_count, row_pitch);
+		CopyBufferWithSws(buf, rowCount, rowPitch);
 	}
 
 	m_video_context->frame->pts = m_video_context->frame_pts++;
@@ -288,14 +277,37 @@ void XVideoWriter::CloseFile()
 
 	const uint8_t endcode[] = { 0, 0, 1, 0xb7 };
 	std::fflush(stdout);
-	avcodec_send_frame(m_video_context->ctx, nullptr);
+	auto ret = avcodec_send_frame(m_video_context->ctx, nullptr);
+	while (ret >= 0)
+	{
+		ret = avcodec_receive_packet(m_video_context->ctx, m_video_context->pkt);
+		if (ret == AVERROR_EOF)
+			break;
+		else if (ret < 0)
+		{
+			m_logger->write("Error during encoding\r\n");
+			return;
+		}		
+		
+		fwrite(m_video_context->pkt->data, 1, m_video_context->pkt->size, m_video_context->file);
+		av_packet_unref(m_video_context->pkt);
+	}
 	fwrite(endcode, 1, sizeof(endcode), m_video_context->file);
 	fclose(m_video_context->file);
 
 	Release();
 }
 
-
+AVPixelFormat XVideoWriter::ConvertDXGItoAV(const DXGI_FORMAT fmt)
+{
+	switch (fmt)
+	{
+	case DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_UINT:
+		return AVPixelFormat::AV_PIX_FMT_RGBA;
+	default:
+		return AVPixelFormat::AV_PIX_FMT_NONE;
+	}
+}
 
 std::vector<std::string> XVideoWriter::GetAllEncoders()
 {
