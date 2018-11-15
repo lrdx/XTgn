@@ -35,7 +35,8 @@ SOURCES += \
     src/main.cpp \
     src/mainwindow.cpp \
     src/VRWorker.cpp \
-    src/XVideoWriter.cpp
+    src/XVideoWriter.cpp \
+    src/SettingsWindow.cpp
 
 
 HEADERS += \            
@@ -46,11 +47,12 @@ HEADERS += \
     src/Logger.h \
     src/mainwindow.h \
     src/VRWorker.h \
-    src/XVideoWriter.h
+    src/XVideoWriter.h \
+    src/SettingsWindow.h
 
 FORMS += \
         ui/mainwindow.ui \
-	ui/settings.ui
+	ui/settingswindow.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

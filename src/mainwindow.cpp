@@ -24,7 +24,8 @@ MainWindow::MainWindow(QWidget *parent) :
 	connect(ui->actionNew_Expirement, &QAction::triggered, this, &MainWindow::NewExpirement);
 	connect(ui->actionSettings, &QAction::triggered, this, &MainWindow::OpenSettingsWindow);
 
-	logger = new Logger(this, "log.txt", ui->plainTextEdit);
+	//logger = new Logger(this, "log.txt", ui->plainTextEdit);
+	logger = new Logger(this, "log.txt", nullptr);
 	vr = new VRWorker(logger);
 	vw = new XVideoWriter(logger);
 }
@@ -58,7 +59,7 @@ void MainWindow::NewExpirement()
 	}
 
 	vw->Initialize(filename.toStdString(), settings->value("video_codec", "libx264").toString().toStdString(),
-		settings->value("video_bitrate", 1000).toInt(),
+		settings->value("video_bitrate", 1000).toInt() * 1000,	//kb/s -> b/s
 		settings->value("video_width", 800).toInt(),
 		settings->value("video_height", 600).toInt(),
 		settings->value("video_framerate", 24).toInt(),
@@ -94,7 +95,7 @@ void MainWindow::StartExpirement()
 	{
 		const auto framerate = settings->value("video_framerate", "24").toInt();
 		boost::asio::io_context io;
-		auto serial_port = boost::asio::serial_port(io, settings->value("port_name", "COM1").toString().toStdString());
+		auto serial_port = boost::asio::serial_port(io, settings->value("port_name", "COM4").toString().toStdString());
 		serial_port.set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
 		serial_port.set_option(boost::asio::serial_port_base::baud_rate(9600));
 		serial_port.set_option(boost::asio::serial_port_base::character_size(8));
@@ -103,14 +104,20 @@ void MainWindow::StartExpirement()
 		serial_port.write_some(boost::asio::buffer("1"));
 		while (thread_worked)
 		{
-			const auto startTime = std::chrono::high_resolution_clock::now();
+			auto startTime = std::chrono::high_resolution_clock::now();
 			vr->CopyScreenToBuffer();
+			auto endTime = std::chrono::high_resolution_clock::now();
+			auto lastedTime1 = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+			startTime = std::chrono::high_resolution_clock::now();
 			vw->WriteFrame(vr->GetBuffer(), vr->GetBufferRowCount(), vr->GetBufferRowPitch());
-			const auto endTime = std::chrono::high_resolution_clock::now();
-			const auto lastedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-			logger->write(QString("Copy screen to buffer lasted %d ms").arg(lastedTime));
-			const auto sleepTime = std::chrono::milliseconds(static_cast<int>(std::round(1000 / framerate - lastedTime)));
-			logger->write(QString("Sleep on %d ms").arg(sleepTime.count()));
+			endTime = std::chrono::high_resolution_clock::now();
+			auto lastedTime2 = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+			//const auto ll = QString("Copy screen to buffer lasted %ll ms").arg(lastedTime);
+			logger->write(QString("Copy screen to buffer lasted %1 ms and %2 ms\r\n").arg(lastedTime1).arg(lastedTime2));
+			//const auto tt = static_cast<int>(std::round(1000 / framerate - lastedTime));
+			const auto sleepTime = std::chrono::milliseconds(static_cast<int>(std::round(1000 / framerate)));
+			//logger->write(QString("Sleep on %1 ms\r\n").arg(qulonglong(sleepTime.count())));
+
 			std::this_thread::sleep_for(sleepTime);
 		}
 

@@ -93,6 +93,9 @@
     <property name="readOnly">
      <bool>true</bool>
     </property>
+    <property name="maximumBlockCount">
+     <number>999</number>
+    </property>
     <property name="placeholderText">
      <string/>
     </property>
@@ -143,7 +146,7 @@
     <enum>TopToolBarArea</enum>
    </attribute>
    <attribute name="toolBarBreak">
-    <bool>true</bool>
+    <bool>false</bool>
    </attribute>
    <addaction name="actionNew_Expirement"/>
    <addaction name="separator"/>

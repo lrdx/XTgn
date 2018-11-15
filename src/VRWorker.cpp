@@ -148,7 +148,7 @@ bool VRWorker::CopyScreenToBuffer()
 		m_vr_context->ctx11->Unmap(pStaging.Get(), 0);
 		return false;
 	}
-
+	auto startTime = std::chrono::high_resolution_clock::now();
 	uint8_t* dptr = m_buffer.get();
 	size_t msize = std::min<size_t>(rowPitch, mapped.RowPitch);
 	for (size_t h = 0; h < rowCount; ++h)
@@ -158,6 +158,11 @@ bool VRWorker::CopyScreenToBuffer()
 		dptr += rowPitch;
 	}
 
+	auto endTime = std::chrono::high_resolution_clock::now();
+
+	auto lastedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+
+	//m_logger->write(QString("Copy screen to buffer lasted %1 ms\r\n").arg(lastedTime));
 	m_vr_context->ctx11->Unmap(pStaging.Get(), 0);
 
 	return true;

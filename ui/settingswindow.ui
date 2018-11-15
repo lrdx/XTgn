@@ -381,7 +381,7 @@
          <enum>Qt::LeftToRight</enum>
         </property>
         <property name="text">
-         <string>COM1</string>
+         <string>COM2</string>
         </property>
         <property name="frame">
          <bool>true</bool>

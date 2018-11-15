@@ -44,8 +44,8 @@ public:
 		int videoHeight,
 		int videoFramerate,
 		DXGI_FORMAT format,
-		int height,
-		int width);
+		int width,
+		int height);
 	void Initialize(const std::string& filename,
 		const std::string& codec_name,
 		int videoBitrate,
@@ -53,8 +53,8 @@ public:
 		int videoHeight,
 		int videoFramerate,
 		AVPixelFormat format,
-		int height,
-		int width);
+		int width,
+		int height);
 	void Release();
 	void WriteFrame(uint8_t* buf, int rowCount, int rowPitch);
 	void CloseFile();

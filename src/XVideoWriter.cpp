@@ -59,11 +59,11 @@ void XVideoWriter::Initialize(const std::string& filename,
 	int videoWidth,
 	int videoHeight,
 	int videoFramerate,
-	DXGI_FORMAT format,
-	int height,
-	int width)
+	DXGI_FORMAT format,	
+	int width,
+	int height)
 {
-	Initialize(filename, codecName, videoBitrate, videoWidth, videoHeight, videoFramerate, ConvertDXGItoAV(format), height, width);
+	Initialize(filename, codecName, videoBitrate, videoWidth, videoHeight, videoFramerate, ConvertDXGItoAV(format), width, height);
 }
 
 void XVideoWriter::Initialize(const std::string& filename,
@@ -73,8 +73,8 @@ void XVideoWriter::Initialize(const std::string& filename,
 	int videoHeight,
 	int videoFramerate,
 	AVPixelFormat format,
-	int height,
-	int width)
+	int width,
+	int height)
 {
 	if(format == AV_PIX_FMT_NONE)
 	{
@@ -177,7 +177,7 @@ void XVideoWriter::Initialize(const std::string& filename,
 	{
 		m_video_context->sws_ctx = sws_getContext(width, height, format,
 			m_video_context->frame->width, m_video_context->frame->height,
-			static_cast<AVPixelFormat>(m_video_context->frame->format), SWS_BICUBIC, NULL, NULL, NULL);
+			static_cast<AVPixelFormat>(m_video_context->frame->format), SWS_FAST_BILINEAR, NULL, NULL, NULL);
 
 		if (!m_video_context->sws_ctx)
 		{
@@ -302,7 +302,7 @@ AVPixelFormat XVideoWriter::ConvertDXGItoAV(const DXGI_FORMAT fmt)
 {
 	switch (fmt)
 	{
-	case DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_UINT:
+	case DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
 		return AVPixelFormat::AV_PIX_FMT_RGBA;
 	default:
 		return AVPixelFormat::AV_PIX_FMT_NONE;
