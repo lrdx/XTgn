@@ -10,6 +10,7 @@ extern "C" {
 
 #pragma comment(lib, "avutil.lib")
 #pragma comment(lib, "avcodec.lib")
+#pragma comment(lib, "avformat.lib")
 #pragma comment(lib, "swscale.lib")
 
 XVideoWriter::XVideoWriter(Logger* logger)
@@ -26,7 +27,10 @@ XVideoWriter::~XVideoWriter()
 void XVideoWriter::Release()
 {
 	if (m_video_context->ctx)
+	{
+		avcodec_close(m_video_context->ctx);
 		avcodec_free_context(&m_video_context->ctx);
+	}
 
 	if (m_video_context->frame)
 		av_frame_free(&m_video_context->frame);
@@ -37,12 +41,22 @@ void XVideoWriter::Release()
 	if (m_video_context->pkt)
 		av_packet_free(&m_video_context->pkt);
 
-	if (m_video_context->file)
-		fclose(m_video_context->file);
+	if (m_video_context->ftx && !(m_video_context->ftx->oformat->flags & AVFMT_NOFILE) && m_video_context->ftx->pb)
+	{
+		avio_close(m_video_context->ftx->pb);
+		m_video_context->ftx->pb = nullptr;
+	}
+
+	if (m_video_context->ftx)
+		avformat_free_context(m_video_context->ftx);
+
+	//if (m_video_context->file)
+	//	fclose(m_video_context->file);
 
 	if (m_video_context->sws_ctx)
 		sws_freeContext(m_video_context->sws_ctx);
 
+	m_video_context->ftx = nullptr;
 	m_video_context->ctx = nullptr;
 	m_video_context->frame = nullptr;
 	m_video_context->tmp_frame = nullptr;
@@ -76,9 +90,9 @@ void XVideoWriter::Initialize(const std::string& filename,
 	int width,
 	int height)
 {
-	if(format == AV_PIX_FMT_NONE)
+	if (format == AV_PIX_FMT_NONE)
 	{
-		m_logger->write("Screen format unknown");
+		m_logger->WriteError("Screen format unknown");
 		return;
 	}
 
@@ -89,14 +103,22 @@ void XVideoWriter::Initialize(const std::string& filename,
 	m_video_context->codec = avcodec_find_encoder_by_name(codecName.c_str());
 	if (!m_video_context->codec)
 	{
-		m_logger->write(QString("Codec %s not found. Using uncompressed video\r\n").arg(codecName.c_str()));
+		m_logger->WriteError(QString("Codec %1 not found. Using uncompressed video\r\n").arg(codecName.c_str()));
+	}
+
+	avformat_alloc_output_context2(&m_video_context->ftx, NULL, "avi", filename.c_str());
+	if (!m_video_context->ftx)
+	{
+		m_logger->WriteError("Could not allocate output context");
+		Release();
+		return;
 	}
 
 	m_video_context->ctx = avcodec_alloc_context3(m_video_context->codec);
 	if (!m_video_context->ctx)
 	{
 		Release();
-		m_logger->write("Could not allocate video codec context\r\n");
+		m_logger->WriteError("Could not allocate video codec context\r\n");
 		return;
 	}
 
@@ -104,7 +126,7 @@ void XVideoWriter::Initialize(const std::string& filename,
 	if (!m_video_context->pkt)
 	{
 		Release();
-		m_logger->write("Could not allocate video packet\r\n");
+		m_logger->WriteError("Could not allocate video packet\r\n");
 		return;
 	}
 
@@ -126,11 +148,28 @@ void XVideoWriter::Initialize(const std::string& filename,
 	 * will always be I frame irrespective to gop_size
 	 */
 	m_video_context->ctx->gop_size = 10;
-	m_video_context->ctx->max_b_frames = 1;
+	m_video_context->ctx->max_b_frames = 0;
 	m_video_context->ctx->pix_fmt = AV_PIX_FMT_YUV420P;
 
 	if (m_video_context->codec->id == AV_CODEC_ID_H264)
 		av_opt_set(m_video_context->ctx->priv_data, "preset", "slow", 0);
+
+	m_video_context->video_st = avformat_new_stream(m_video_context->ftx, m_video_context->codec);
+
+	m_video_context->video_st->time_base = tb;
+	if (!m_video_context->video_st)
+	{
+		Release();
+		m_logger->WriteError("Could not create stream to video file\r\n");
+		return;
+	}
+
+	if (avcodec_parameters_from_context(m_video_context->video_st->codecpar, m_video_context->ctx) < 0)
+	{
+		Release();
+		m_logger->WriteError("Could not get parameter from context\r\n");
+		return;
+	}
 
 	/* open it */
 	auto ret = avcodec_open2(m_video_context->ctx, m_video_context->codec, nullptr);
@@ -139,23 +178,49 @@ void XVideoWriter::Initialize(const std::string& filename,
 		char str_err[256];
 		av_strerror(ret, str_err, 256);
 		Release();
-		m_logger->write(QString("Could not open codec: %s\r\n").arg(ret));
+		m_logger->WriteError(QString("Could not open codec: %1\r\n").arg(ret));
 		return;
 	}
+
+	if (m_video_context->ftx->oformat->flags & AVFMT_GLOBALHEADER)
+		m_video_context->ftx->oformat->flags |= AVFMT_GLOBALHEADER;
+
+	av_dump_format(m_video_context->ftx, 0, filename.c_str(), 1);
 
 	m_video_context->file = fopen(filename.c_str(), "wb");
-	if (!m_video_context->file) 
+	if (!m_video_context->file)
 	{
 		Release();
-		m_logger->write(QString("Could not open file: %s\r\n").arg(filename.c_str()));
+		m_logger->WriteError(QString("Could not open file: %1\r\n").arg(filename.c_str()));
 		return;
 	}
 
-	m_video_context->frame = av_frame_alloc();
-	if (!m_video_context->frame) 
+	if (!(m_video_context->ftx->oformat->flags & AVFMT_NOFILE))
+	{
+		if (avio_open(&m_video_context->ftx->pb, filename.c_str(), AVIO_FLAG_WRITE) < 0)
+		{
+			Release();
+			m_logger->WriteError("Error avio open");
+			return;
+		}
+	}
+
+	if (avformat_write_header(m_video_context->ftx, nullptr) < 0)
 	{
 		Release();
-		m_logger->write("Could not allocate video frame\r\n");
+		m_logger->WriteError("Error write header to file");
+		return;
+	}
+
+	av_init_packet(m_video_context->pkt);
+	m_video_context->pkt->data = nullptr;
+	m_video_context->pkt->size = 0;
+
+	m_video_context->frame = av_frame_alloc();
+	if (!m_video_context->frame)
+	{
+		Release();
+		m_logger->WriteError("Could not allocate video frame\r\n");
 		return;
 	}
 
@@ -167,7 +232,7 @@ void XVideoWriter::Initialize(const std::string& filename,
 	if (ret < 0)
 	{
 		Release();
-		m_logger->write("Could not allocate the video frame data\r\n");
+		m_logger->WriteError("Could not allocate the video frame data\r\n");
 		return;
 	}
 
@@ -181,7 +246,7 @@ void XVideoWriter::Initialize(const std::string& filename,
 
 		if (!m_video_context->sws_ctx)
 		{
-			m_logger->write("Could not allocate the sws context\r\n");
+			m_logger->WriteError("Could not allocate the sws context\r\n");
 			Release();
 			return;
 		}
@@ -190,7 +255,7 @@ void XVideoWriter::Initialize(const std::string& filename,
 		if (!m_video_context->tmp_frame)
 		{
 			Release();
-			m_logger->write("Could not allocate tmp video frame\r\n");
+			m_logger->WriteError("Could not allocate tmp video frame\r\n");
 			return;
 		}
 
@@ -202,7 +267,7 @@ void XVideoWriter::Initialize(const std::string& filename,
 		if (ret < 0)
 		{
 			Release();
-			m_logger->write("Could not allocate the tmp video frame data\r\n");
+			m_logger->WriteError("Could not allocate the tmp video frame data\r\n");
 			return;
 		}
 	}
@@ -211,7 +276,7 @@ void XVideoWriter::Initialize(const std::string& filename,
 	m_initialized = true;
 }
 
-void XVideoWriter::CopyBufferWithSws(uint8_t* buf, int rowCount, int rowPitch)
+void XVideoWriter::CopyBufferWithSws(uint8_t* buf, size_t rowCount, size_t rowPitch)
 {
 	uint8_t* sptr = buf;
 	uint8_t* dptr = m_video_context->tmp_frame->data[0];
@@ -229,14 +294,14 @@ void XVideoWriter::CopyBufferWithSws(uint8_t* buf, int rowCount, int rowPitch)
 		m_video_context->frame->linesize);
 }
 
-void XVideoWriter::WriteFrame(uint8_t* buf, int rowCount, int rowPitch)
+void XVideoWriter::WriteFrame(uint8_t* buf, size_t rowCount, size_t rowPitch)
 {
 	if (!m_initialized)
 		return;
 
 	if (av_frame_make_writable(m_video_context->frame) < 0)
 	{
-		m_logger->write("Error write frame to file: frame unwritable");
+		m_logger->WriteError("Error write frame to file: frame unwritable");
 		Release();
 	}
 
@@ -250,7 +315,7 @@ void XVideoWriter::WriteFrame(uint8_t* buf, int rowCount, int rowPitch)
 	auto ret = avcodec_send_frame(m_video_context->ctx, m_video_context->frame);
 	if (ret < 0)
 	{
-		m_logger->write("Error sending a frame for encoding\r\n");
+		m_logger->WriteError("Error sending a frame for encoding\r\n");
 		return;
 	}
 
@@ -261,11 +326,21 @@ void XVideoWriter::WriteFrame(uint8_t* buf, int rowCount, int rowPitch)
 			return;
 		else if (ret < 0)
 		{
-			m_logger->write("Error during encoding\r\n");
+			m_logger->WriteError("Error during encoding\r\n");
 			return;
 		}
 
-		fwrite(m_video_context->pkt->data, 1, m_video_context->pkt->size, m_video_context->file);
+		if (m_video_context->pkt->pts != AV_NOPTS_VALUE)
+			m_video_context->pkt->pts = av_rescale_q(m_video_context->pkt->pts, m_video_context->ctx->time_base, m_video_context->video_st->time_base);
+
+		ret = av_interleaved_write_frame(m_video_context->ftx, m_video_context->pkt);
+		if (ret < 0)
+		{
+			m_logger->WriteError("Error during save\r\n");
+			return;
+		}
+
+		//fwrite(m_video_context->pkt->data, 1, m_video_context->pkt->size, m_video_context->file);
 		av_packet_unref(m_video_context->pkt);
 	}
 }
@@ -285,15 +360,30 @@ void XVideoWriter::CloseFile()
 			break;
 		else if (ret < 0)
 		{
-			m_logger->write("Error during encoding\r\n");
+			m_logger->WriteError("Error during encoding\r\n");
 			return;
-		}		
-		
-		fwrite(m_video_context->pkt->data, 1, m_video_context->pkt->size, m_video_context->file);
+		}
+
+		ret = av_interleaved_write_frame(m_video_context->ftx, m_video_context->pkt);
+		if (ret < 0)
+		{
+			m_logger->WriteError("Error during save\r\n");
+			return;
+		}
+		//fwrite(m_video_context->pkt->data, 1, m_video_context->pkt->size, m_video_context->file);
 		av_packet_unref(m_video_context->pkt);
 	}
-	fwrite(endcode, 1, sizeof(endcode), m_video_context->file);
-	fclose(m_video_context->file);
+	if (m_video_context->ftx)
+	{
+		ret = av_write_trailer(m_video_context->ftx);
+		if (ret < 0)
+		{
+			m_logger->WriteError("Error during save\r\n");
+			return;
+		}
+	}
+	//fwrite(endcode, 1, sizeof(endcode), m_video_context->file);
+	//fclose(m_video_context->file);
 
 	Release();
 }

@@ -18,6 +18,8 @@ VRWorker::VRWorker(Logger* logger)
 	m_vr_context->dev11 = nullptr;
 	m_vr_context->mirrorSrv = nullptr;
 	m_vr_context->tex = nullptr;
+	m_vr_context->width = 0;
+	m_vr_context->height = 0;
 }
 
 VRWorker::~VRWorker()
@@ -27,7 +29,10 @@ VRWorker::~VRWorker()
 
 void VRWorker::Initalize(const bool isRightEye)
 {
-	m_logger->write("Try to initialize OpenVR...");
+	if (m_initialized)
+		Release();
+
+	m_logger->WriteInfo("Try to initialize OpenVR...");
 
 	// Init OpenVR, create D3D11 device and get shared mirror texture
 	vr::EVRInitError err = vr::VRInitError_None;
@@ -35,21 +40,21 @@ void VRWorker::Initalize(const bool isRightEye)
 
 	if (err != vr::VRInitError_None)
 	{
-		m_logger->write("OpenVR not available\r\n");
+		m_logger->WriteError("OpenVR not available\r\n");
 		return;
 	}
 
 	D3D_FEATURE_LEVEL featureLevel;
 	if (!SUCCEEDED(D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, 0, 0, 0, 0, D3D11_SDK_VERSION, &m_vr_context->dev11, &featureLevel, &m_vr_context->ctx11)))
 	{
-		m_logger->write("D3D11CreateDevice failed\r\n");
+		m_logger->WriteError("D3D11CreateDevice failed\r\n");
 		return;
 	}
 
 	const auto err_comp = vr::VRCompositor()->GetMirrorTextureD3D11(isRightEye ? vr::Eye_Right : vr::Eye_Left, m_vr_context->dev11, reinterpret_cast<void**>(&m_vr_context->mirrorSrv));
 	if (err_comp != vr::EVRCompositorError::VRCompositorError_None || !m_vr_context->mirrorSrv)
 	{
-		m_logger->write("GetMirrorTextureD3D11 failed\r\n");
+		m_logger->WriteError("GetMirrorTextureD3D11 failed\r\n");
 		return;
 	}
 
@@ -57,7 +62,7 @@ void VRWorker::Initalize(const bool isRightEye)
 	m_vr_context->mirrorSrv->GetResource(&m_vr_context->tex);
 	if (!m_vr_context->tex)
 	{
-		m_logger->write("GetResource failed\r\n");
+		m_logger->WriteError("GetResource failed\r\n");
 		return;
 	}
 
@@ -66,7 +71,7 @@ void VRWorker::Initalize(const bool isRightEye)
 	
 	if (!SUCCEEDED(m_vr_context->tex->QueryInterface<ID3D11Texture2D>(&tex2D)) || !tex2D)
 	{
-		m_logger->write("QueryInterface failed\r\n");
+		m_logger->WriteError("QueryInterface failed\r\n");
 		return;
 	}
 
@@ -87,11 +92,10 @@ void VRWorker::Initalize(const bool isRightEye)
 	m_buffer = std::make_unique<uint8_t[]>(slicePitch);
 	bufferRowCount = rowCount;
 	bufferRowPitch = rowPitch;
-	bufferSlicePitch = slicePitch;
 
 	tex2D->Release();
 
-	m_logger->write("Successful initalization OpenVR\r\n");
+	m_logger->WriteError("Successful initalization OpenVR\r\n");
 
 	m_initialized = true;
 }
@@ -162,7 +166,7 @@ bool VRWorker::CopyScreenToBuffer()
 
 	auto lastedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
 
-	//m_logger->write(QString("Copy screen to buffer lasted %1 ms\r\n").arg(lastedTime));
+	//m_logger->WriteInfo(QString("Copy screen to buffer lasted %1 ms\r\n").arg(lastedTime));
 	m_vr_context->ctx11->Unmap(pStaging.Get(), 0);
 
 	return true;

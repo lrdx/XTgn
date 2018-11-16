@@ -36,8 +36,8 @@ public:
 	bool IsInitialized() const { return m_initialized; }
 
 	uint8_t* GetBuffer() const { return m_buffer.get(); }	
-	int GetBufferRowCount() const { return bufferRowCount; }
-	int GetBufferRowPitch() const { return bufferRowPitch; }
+	size_t GetBufferRowCount() const { return bufferRowCount; }
+	size_t GetBufferRowPitch() const { return bufferRowPitch; }
 	int GetWidth() const { return m_vr_context->width; }
 	int GetHeight() const { return m_vr_context->height; }
 
@@ -49,9 +49,8 @@ private:
 	Logger* m_logger;
 
 	bool m_initialized;
-	int bufferRowCount;
-	int bufferRowPitch;
-	int bufferSlicePitch;
+	size_t bufferRowCount;
+	size_t bufferRowPitch;
 	std::unique_ptr<uint8_t[]> m_buffer;
 
 	DXGI_FORMAT m_format;

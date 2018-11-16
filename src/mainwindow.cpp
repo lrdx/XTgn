@@ -24,8 +24,8 @@ MainWindow::MainWindow(QWidget *parent) :
 	connect(ui->actionNew_Expirement, &QAction::triggered, this, &MainWindow::NewExpirement);
 	connect(ui->actionSettings, &QAction::triggered, this, &MainWindow::OpenSettingsWindow);
 
-	//logger = new Logger(this, "log.txt", ui->plainTextEdit);
-	logger = new Logger(this, "log.txt", nullptr);
+	logger = new Logger(this, "log.txt", ui->plainTextEdit);
+	//logger = new Logger(this, "log.txt", nullptr);
 	vr = new VRWorker(logger);
 	vw = new XVideoWriter(logger);
 }
@@ -42,11 +42,13 @@ void MainWindow::OpenSettingsWindow()
 
 void MainWindow::NewExpirement()
 {
+	StopThreadIfWorked();
+
 	vr->Initalize(settings->value("eyeVR", "right").toString().compare("right", Qt::CaseInsensitive) == 0);
 
 	if (!vr->IsInitialized())
 	{
-		logger->write("VR failed initialization");
+		logger->WriteError("VR failed initialization");
 		return;
 	}
 
@@ -54,7 +56,7 @@ void MainWindow::NewExpirement()
 
 	if(filename.isEmpty())
 	{
-		logger->write("Error open file to save..");
+		logger->WriteError("Error open file to save..");
 		return;
 	}
 
@@ -69,39 +71,44 @@ void MainWindow::NewExpirement()
 
 	if (!vw->IsInitialized())
 	{
-		logger->write("VideoWriter failed initialization");
+		logger->WriteError("VideoWriter failed initialization");
 		return;
 	}
 }
 
 void MainWindow::StartExpirement()
 {
+	StopThreadIfWorked();
+
 	if (!vr->IsInitialized() || !vw->IsInitialized())
 	{
-		logger->write("VR or videowriter uninitialized");
+		logger->WriteError("VR or videowriter uninitialized");
 		return;
-	}
-
-	if(thread_worked)
-	{
-		logger->write("Thread is working. Waiting shutdown...");
-		thread_worked = false;
-		pWatchdogThread->join();
 	}
 
 	thread_worked = true;
 
 	pWatchdogThread.reset(std::make_unique<std::thread>([&]()
 	{
-		const auto framerate = settings->value("video_framerate", "24").toInt();
-		boost::asio::io_context io;
-		auto serial_port = boost::asio::serial_port(io, settings->value("port_name", "COM4").toString().toStdString());
-		serial_port.set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
-		serial_port.set_option(boost::asio::serial_port_base::baud_rate(9600));
-		serial_port.set_option(boost::asio::serial_port_base::character_size(8));
-		serial_port.set_option(boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one));
+		const auto framerate = settings->value("video_framerate", "30").toInt();
 
-		serial_port.write_some(boost::asio::buffer("1"));
+		try
+		{
+			boost::asio::io_context io;
+			auto serial_port = boost::asio::serial_port(io, settings->value("port_name", "COM4").toString().toStdString());
+			serial_port.set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
+			serial_port.set_option(boost::asio::serial_port_base::baud_rate(9600));
+			serial_port.set_option(boost::asio::serial_port_base::character_size(8));
+			serial_port.set_option(boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one));
+
+			serial_port.write_some(boost::asio::buffer("1"));
+			serial_port.close();
+		}
+		catch (const boost::system::system_error& ex)
+		{
+			logger->WriteError(QString("Error initialization serial port %1: %2").arg(settings->value("port_name", "COM4").toString()));
+		}
+
 		while (thread_worked)
 		{
 			auto startTime = std::chrono::high_resolution_clock::now();
@@ -112,24 +119,29 @@ void MainWindow::StartExpirement()
 			vw->WriteFrame(vr->GetBuffer(), vr->GetBufferRowCount(), vr->GetBufferRowPitch());
 			endTime = std::chrono::high_resolution_clock::now();
 			auto lastedTime2 = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-			//const auto ll = QString("Copy screen to buffer lasted %ll ms").arg(lastedTime);
-			logger->write(QString("Copy screen to buffer lasted %1 ms and %2 ms\r\n").arg(lastedTime1).arg(lastedTime2));
-			//const auto tt = static_cast<int>(std::round(1000 / framerate - lastedTime));
-			const auto sleepTime = std::chrono::milliseconds(static_cast<int>(std::round(1000 / framerate)));
-			//logger->write(QString("Sleep on %1 ms\r\n").arg(qulonglong(sleepTime.count())));
-
+			const auto sleepTime = std::chrono::milliseconds(static_cast<int>(std::round(1000 / framerate - (lastedTime1 + lastedTime2))));
+			//logger->WriteInfo(QString("sleeptime: %1").arg(sleepTime.count()));
 			std::this_thread::sleep_for(sleepTime);
 		}
-
 		vw->CloseFile();
-		serial_port.close();
-		logger->write("Write file..");
+		logger->WriteInfo("Write file..");
+		thread_worked = false;
 	}).release());
 }
 
 void MainWindow::StopExpirement()
 {
-	thread_worked = false;
+	StopThreadIfWorked();
+}
+
+void MainWindow::StopThreadIfWorked()
+{
+	if (thread_worked)
+	{
+		logger->WriteInfo("Waiting shutdown thread...");
+		thread_worked = false;
+		pWatchdogThread->join();
+	}
 }
 
 void MainWindow::showEvent(QShowEvent* e)

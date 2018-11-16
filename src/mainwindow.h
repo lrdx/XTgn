@@ -8,18 +8,18 @@
 #include <QMainWindow>
 #include <QSettings>
 
-namespace boost {
-	namespace asio {
-		class serial_port;
-	}
-}
-
 QT_BEGIN_NAMESPACE
 class QAction;
 class QMenu;
 class QPlainTextEdit;
 class QSessionManager;
 QT_END_NAMESPACE
+
+namespace boost {
+	namespace asio {
+		class serial_port;
+	}
+}
 
 namespace Ui {
 class MainWindow;
@@ -49,6 +49,8 @@ private:
 
 	std::unique_ptr<std::thread> pWatchdogThread;
 	bool thread_worked = false;
+
+	void StopThreadIfWorked();
 
 public slots:
 	void StartExpirement();

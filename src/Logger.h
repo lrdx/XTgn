@@ -11,7 +11,7 @@ class Logger : public QObject
 public:
 	explicit Logger(QObject *parent, QString fileName, QPlainTextEdit *editor = nullptr);
 	~Logger();
-	void setShowDateTime(bool value);
+	void SetShowDateTime(bool value);
 
 private:
 	QFile* file;
@@ -21,7 +21,12 @@ private:
 signals:
 
 public slots:
-	void write(const QString &value);
+	void WriteError(const QString& value);
+	void WriteDebug(const QString& value);
+	void WriteInfo(const QString& value);
+
+private slots:
+	void Write(const QString &value);
 
 };
 

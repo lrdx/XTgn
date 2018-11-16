@@ -14,7 +14,7 @@ Logger::Logger(QObject *parent, QString fileName, QPlainTextEdit *editor) : QObj
 	}
 }
 
-void Logger::write(const QString& value) 
+void Logger::Write(const QString& value) 
 {
 	QString text = value;// + "";
 	if (m_showDate)
@@ -30,7 +30,22 @@ void Logger::write(const QString& value)
 		m_editor->appendPlainText(text);
 }
 
-void Logger::setShowDateTime(const bool value) 
+void Logger::WriteInfo(const QString& value)
+{
+	Write("[Info] " + value);
+}
+
+void Logger::WriteDebug(const QString& value)
+{
+	Write("[Debug] " + value);
+}
+
+void Logger::WriteError(const QString& value)
+{
+	Write("[Error] " + value);
+}
+
+void Logger::SetShowDateTime(const bool value) 
 {
 	m_showDate = value;
 }

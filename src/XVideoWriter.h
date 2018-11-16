@@ -9,13 +9,17 @@
 extern "C" {
 #endif
 #include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
 #ifdef __cplusplus 
 }
 #endif
 
+//TODO: Add AVDictionary
 struct ffmpeg_context
 {
+	AVStream* video_st;
+	AVFormatContext* ftx;
 	AVCodec* codec;
 	AVFrame* frame;
 	AVFrame* tmp_frame;
@@ -56,8 +60,9 @@ public:
 		int width,
 		int height);
 	void Release();
-	void WriteFrame(uint8_t* buf, int rowCount, int rowPitch);
+	void WriteFrame(uint8_t* buf, size_t rowCount, size_t rowPitch);
 	void CloseFile();
+
 
 private:
 	Logger* m_logger;
@@ -66,7 +71,7 @@ private:
 	
 	bool m_initialized;
 
-	void CopyBufferWithSws(uint8_t* buf, int rowCount, int rowPitch);
+	void CopyBufferWithSws(uint8_t* buf, size_t rowCount, size_t rowPitch);
 	AVPixelFormat ConvertDXGItoAV(DXGI_FORMAT fmt);
 };
 
