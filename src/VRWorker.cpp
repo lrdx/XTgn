@@ -105,7 +105,7 @@ void VRWorker::Release()
 
 	if (m_vr_context->mirrorSrv)
 	{
-		vr::VRCompositor()->ReleaseMirrorTextureD3D11(m_vr_context->mirrorSrv);
+		//vr::VRCompositor()->ReleaseMirrorTextureD3D11(m_vr_context->mirrorSrv);
 		m_vr_context->mirrorSrv->Release();
 	}
 
