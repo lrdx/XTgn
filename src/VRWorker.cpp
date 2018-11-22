@@ -95,7 +95,7 @@ void VRWorker::Initalize(const bool isRightEye)
 
 	tex2D->Release();
 
-	m_logger->WriteError("Successful initalization OpenVR\r\n");
+	m_logger->WriteInfo("Successful initalization OpenVR\r\n");
 
 	m_initialized = true;
 }
