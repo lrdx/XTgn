@@ -25,18 +25,33 @@ MainWindow::MainWindow(QWidget *parent) :
 	connect(ui->actionSettings, &QAction::triggered, this, &MainWindow::OpenSettingsWindow);
 
 	logger = new Logger(this, "log.txt", ui->plainTextEdit);
-	//logger = new Logger(this, "log.txt", nullptr);
 	vr = new VRWorker(logger);
 	vw = new XVideoWriter(logger);
 }
 
 void MainWindow::OpenSettingsWindow()
 {
-	const auto settings_copy = new QSettings(settings);
-	auto dlg = new SettingsDialog(settings_copy, this);
-	if(dlg->exec() == QDialog::Accepted)
+	QMap<QString, QVariant> old_settings;
+	const auto keys = settings->allKeys();
+	QStringListIterator it(keys);
+	while(it.hasNext())
 	{
-		settings = settings_copy;
+		const auto current_key = it.next();
+		old_settings.insert(current_key, settings->value(current_key));
+	}
+
+	const auto dlg = new SettingsDialog(settings, this);
+	if(dlg->exec() == QDialog::Rejected)
+	{
+		settings->clear();
+		for (int i = 0; i < keys.count(); ++i)
+		{
+			settings->setValue(keys.at(i), old_settings.value(keys.at(i)));
+		}
+	}
+	else
+	{
+		settings->sync();
 	}
 }
 
@@ -138,7 +153,6 @@ void MainWindow::StopThreadIfWorked()
 {
 	if (thread_worked)
 	{
-		logger->WriteInfo("Waiting shutdown thread...");
 		thread_worked = false;
 		pWatchdogThread->join();
 	}
