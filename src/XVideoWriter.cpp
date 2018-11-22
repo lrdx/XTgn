@@ -133,8 +133,8 @@ void XVideoWriter::Initialize(const std::string& filename,
 	/* put sample parameters */
 	m_video_context->ctx->bit_rate = videoBitrate;
 	/* resolution must be a multiple of two */
-	m_video_context->ctx->width = videoWidth;
-	m_video_context->ctx->height = videoHeight;
+	m_video_context->ctx->width = videoWidth % 2 == 0 ? videoWidth : videoWidth + 1;
+	m_video_context->ctx->height = videoHeight %2 == 0 ? videoHeight : videoHeight + 1;
 	/* frames per second */
 	const AVRational tb = { 1, videoFramerate };
 	m_video_context->ctx->time_base = tb;
