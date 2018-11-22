@@ -1,6 +1,7 @@
 #include "Logger.h"
 
 #include <QDateTime>
+#include <QTextStream>
 
 Logger::Logger(QObject *parent, QString fileName, QPlainTextEdit *editor) : QObject(parent)
 {
@@ -8,9 +9,9 @@ Logger::Logger(QObject *parent, QString fileName, QPlainTextEdit *editor) : QObj
 	m_showDate = true;
 	if (!fileName.isEmpty())
 	{
-		file = new QFile;
-		file->setFileName(fileName);
-		file->open(QIODevice::Append | QIODevice::Text);
+		m_file = new QFile;
+		m_file->setFileName(fileName);
+		m_file->open(QIODevice::Append | QIODevice::Text);
 	}
 }
 
@@ -20,14 +21,16 @@ void Logger::Write(const QString& value)
 	if (m_showDate)
 		text = QDateTime::currentDateTime().toString("dd.MM.yyyy hh:mm:ss ") + text;
 
-	QTextStream out(file);
+	QTextStream out(m_file);
 	out.setCodec("UTF-8");
-	if (file != nullptr) 
+	if (m_file != nullptr)
 	{
 		out << text;
 	}
 	if (m_editor != nullptr)
 		m_editor->appendPlainText(text);
+
+	m_editor->update();
 }
 
 void Logger::WriteInfo(const QString& value)
@@ -52,6 +55,6 @@ void Logger::SetShowDateTime(const bool value)
 
 Logger::~Logger() 
 {
-	if (file != nullptr)
-		file->close();
+	if (m_file != nullptr)
+		m_file->close();
 }

@@ -3,7 +3,6 @@
 
 #include <QPlainTextEdit>
 #include <QFile>
-#include <QTextStream>
 
 class Logger : public QObject
 {
@@ -14,7 +13,7 @@ public:
 	void SetShowDateTime(bool value);
 
 private:
-	QFile* file;
+	QFile* m_file;
 	QPlainTextEdit *m_editor;
 	bool m_showDate;
 
