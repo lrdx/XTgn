@@ -4,9 +4,9 @@
 #include "Logger.h"
 #include "VRWorker.h"
 #include "XVideoWriter.h"
+#include "SettingsHolder.h"
 
 #include <QMainWindow>
-#include <QSettings>
 
 QT_BEGIN_NAMESPACE
 class QAction;
@@ -39,7 +39,7 @@ protected:
 
 private:
     Ui::MainWindow* ui;
-	QSettings* settings;
+	std::unique_ptr<SettingsHolder> settings;
 
 	std::vector<std::string> encoders;
 

@@ -36,19 +36,16 @@ SOURCES += \
     src/mainwindow.cpp \
     src/VRWorker.cpp \
     src/XVideoWriter.cpp \
-    src/SettingsWindow.cpp
-
+    src/SettingsWindow.cpp \
+    src/SettingsHolder.cpp
 
 HEADERS += \            
     src/Logger.h \
     src/mainwindow.h \
     src/VRWorker.h \
-    src/XVideoWriter.h \            
-    src/Logger.h \
-    src/mainwindow.h \
-    src/VRWorker.h \
     src/XVideoWriter.h \
-    src/SettingsWindow.h
+    src/SettingsWindow.h \
+    src/SettingsHolder.h
 
 FORMS += \
         ui/mainwindow.ui \

@@ -1,8 +1,9 @@
 #ifndef __SETTINGS_WINDOW_H__
 #define __SETTINGS_WINDOW_H__
 
+#include "SettingsHolder.h"
+
 #include <QDialog>
-#include <QSettings>
 
 namespace Ui {
 	class SettingsDialog;
@@ -14,12 +15,12 @@ class SettingsDialog : public QDialog
 
 public:
 	explicit SettingsDialog(QWidget* parent) = delete;
-	explicit SettingsDialog(QSettings* set, QWidget *parent);
+	explicit SettingsDialog(SettingsHolder* set, QWidget *parent);
 	~SettingsDialog();
 
 private:
 	Ui::SettingsDialog* ui;
-	QSettings* settings;
+	SettingsHolder* settings;
 };
 
 #endif	//__SETTINGS_WINDOW_H__

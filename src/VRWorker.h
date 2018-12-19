@@ -4,10 +4,10 @@
 #include "Logger.h"
 
 #include <memory>
-#include <thread>
-#include <wrl\client.h>
 
+#include <wrl\client.h>
 #include "d3d11.h"
+#include <openvr.h>
 
 #ifndef IID_GRAPHICS_PPV_ARGS
 #define IID_GRAPHICS_PPV_ARGS(x) IID_PPV_ARGS(x)
@@ -30,7 +30,7 @@ public:
 	VRWorker(Logger* logger);
 	~VRWorker();
 
-	void Initalize(bool isRightEye);
+	void Initalize(vr::EVREye eye);
 	void Release();
 
 	bool IsInitialized() const { return m_initialized; }

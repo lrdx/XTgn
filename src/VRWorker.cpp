@@ -1,9 +1,6 @@
 #include "VRWorker.h"
 
-#include <wrl\client.h>
-#include <d3d11.h>
-
-#include "openvr.h"
+#include <chrono>
 
 #pragma comment(lib, "d3d11.lib")
 
@@ -27,7 +24,7 @@ VRWorker::~VRWorker()
 	Release();
 }
 
-void VRWorker::Initalize(const bool isRightEye)
+void VRWorker::Initalize(const vr::EVREye eye)
 {
 	if (m_initialized)
 		Release();
@@ -51,7 +48,7 @@ void VRWorker::Initalize(const bool isRightEye)
 		return;
 	}
 
-	const auto err_comp = vr::VRCompositor()->GetMirrorTextureD3D11(isRightEye ? vr::Eye_Right : vr::Eye_Left, m_vr_context->dev11, reinterpret_cast<void**>(&m_vr_context->mirrorSrv));
+	const auto err_comp = vr::VRCompositor()->GetMirrorTextureD3D11(eye, m_vr_context->dev11, reinterpret_cast<void**>(&m_vr_context->mirrorSrv));
 	if (err_comp != vr::EVRCompositorError::VRCompositorError_None || !m_vr_context->mirrorSrv)
 	{
 		m_logger->WriteError("GetMirrorTextureD3D11 failed\r\n");

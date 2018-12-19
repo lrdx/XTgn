@@ -16,7 +16,8 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	setCentralWidget(ui->plainTextEdit);
 
-	settings = new QSettings("xtgn.ini", QSettings::Format::IniFormat, this);
+	settings = std::make_unique<SettingsHolder>();
+	settings->Load(new QSettings("xtgn.ini", QSettings::Format::IniFormat));
 	
 	connect(ui->actionExit, &QAction::triggered, this, &QWidget::close);
 	connect(ui->actionStart, &QAction::triggered, this, &MainWindow::StartExpirement);
@@ -31,27 +32,13 @@ MainWindow::MainWindow(QWidget *parent) :
 
 void MainWindow::OpenSettingsWindow()
 {
-	QMap<QString, QVariant> old_settings;
-	const auto keys = settings->allKeys();
-	QStringListIterator it(keys);
-	while(it.hasNext())
-	{
-		const auto current_key = it.next();
-		old_settings.insert(current_key, settings->value(current_key));
-	}
+	const auto settings_copy = new SettingsHolder(*settings);
 
-	const auto dlg = new SettingsDialog(settings, this);
-	if(dlg->exec() == QDialog::Rejected)
+	const auto dlg = new SettingsDialog(settings_copy, this);
+	if(dlg->exec() != QDialog::Rejected)
 	{
-		settings->clear();
-		for (int i = 0; i < keys.count(); ++i)
-		{
-			settings->setValue(keys.at(i), old_settings.value(keys.at(i)));
-		}
-	}
-	else
-	{
-		settings->sync();
+		settings_copy->Save(new QSettings("xtgn.ini", QSettings::Format::IniFormat));
+		settings.reset(settings_copy);
 	}
 }
 
@@ -59,7 +46,7 @@ void MainWindow::NewExpirement()
 {
 	StopThreadIfWorked();
 
-	vr->Initalize(settings->value("eyeVR", "right").toString().compare("right", Qt::CaseInsensitive) == 0);
+	vr->Initalize(settings->GetVREye());
 
 	if (!vr->IsInitialized())
 	{
@@ -75,11 +62,11 @@ void MainWindow::NewExpirement()
 		return;
 	}
 
-	vw->Initialize(filename.toStdString(), settings->value("video_codec", "libx264").toString().toStdString(),
-		settings->value("video_bitrate", 1000).toInt() * 1000,	//kb/s -> b/s
-		settings->value("video_width", 800).toInt(),
-		settings->value("video_height", 600).toInt(),
-		settings->value("video_framerate", 24).toInt(),
+	vw->Initialize(filename.toStdString(), settings->GetCodecName().toStdString(),
+		settings->GetVideoBitrate() * 1000,	//kb/s -> b/s
+		settings->GetVideoWidth(),
+		settings->GetVideoHeight(),
+		settings->GetVideoFramerate(),
 		vr->GetFormat(),
 		vr->GetWidth(),
 		vr->GetHeight());
@@ -105,23 +92,25 @@ void MainWindow::StartExpirement()
 
 	pWatchdogThread.reset(std::make_unique<std::thread>([&]()
 	{
-		const auto framerate = settings->value("video_framerate", "30").toInt();
+		const auto framerate = settings->GetVideoFramerate();
+
+		boost::asio::io_context io;
+		boost::asio::serial_port serial_port(io);
+		serial_port.set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
+		serial_port.set_option(boost::asio::serial_port_base::baud_rate(9600));
+		serial_port.set_option(boost::asio::serial_port_base::character_size(8));
+		serial_port.set_option(boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one));
 
 		try
 		{
-			boost::asio::io_context io;
-			auto serial_port = boost::asio::serial_port(io, settings->value("port_name", "COM4").toString().toStdString());
-			serial_port.set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
-			serial_port.set_option(boost::asio::serial_port_base::baud_rate(9600));
-			serial_port.set_option(boost::asio::serial_port_base::character_size(8));
-			serial_port.set_option(boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one));
+			serial_port.open(settings->GetPortName().toStdString());
 
 			serial_port.write_some(boost::asio::buffer("1"));
 			serial_port.close();
 		}
 		catch (const boost::system::system_error& ex)
 		{
-			logger->WriteError(QString("Error initialization serial port %1: %2").arg(settings->value("port_name", "COM4").toString()));
+			logger->WriteError(QString("Error initialization serial port %1: %2").arg(settings->GetPortName()));
 		}
 
 		while (thread_worked)

@@ -3,28 +3,32 @@
 
 #include "ui_settingswindow.h"
 
-SettingsDialog::SettingsDialog(QSettings* set, QWidget* parent)
+Q_DECLARE_METATYPE(boost::asio::serial_port_base::parity)
+Q_DECLARE_METATYPE(boost::asio::serial_port_base::stop_bits)
+
+SettingsDialog::SettingsDialog(SettingsHolder* set, QWidget* parent)
 	: QDialog(parent),
 	ui(new Ui::SettingsDialog)
 {
 	settings = set;
 
 	ui->setupUi(this);
-	if(settings->value("eyeVR", "right").toString().compare("right", Qt::CaseInsensitive) == 0)
+
+	if(settings->GetVREye() == vr::Eye_Right)
 		ui->rightEyeRadioButton->setChecked(true);
 	else
 		ui->leftEyeRadioButton->setChecked(true);
 
 	connect(ui->eyeButtonGroup, QOverload<QAbstractButton*, bool>::of(&QButtonGroup::buttonToggled),
-		[=](QAbstractButton* button, bool checked)
+		[=](QAbstractButton* button, const bool checked)
 	{
 		if (checked)
 		{
-			settings->setValue("eyeVR", button == ui->rightEyeRadioButton ? "right" : "left");
+			settings->SetVREye(button == ui->rightEyeRadioButton ? vr::Eye_Right : vr::Eye_Left);
 		}
 	});
 
-	const auto lastCodec = settings->value("video_codec", "libx264").toString();
+	const auto lastCodec = settings->GetCodecName();
 	const auto codecs = XVideoWriter::GetAllEncoders();
 	for (const auto& codec : codecs)
 	{
@@ -34,61 +38,63 @@ SettingsDialog::SettingsDialog(QSettings* set, QWidget* parent)
 			ui->codecListWidget->setItemSelected(ui->codecListWidget->item(ui->codecListWidget->count() - 1), true);
 		}
 	}
+
 	if (ui->codecListWidget->selectedItems().isEmpty() && ui->codecListWidget->count() != 0)
 	{
 		ui->codecListWidget->setItemSelected(ui->codecListWidget->item(1), true);
 	}
+
 	ui->codecListWidget->scrollToItem(ui->codecListWidget->selectedItems().at(0), QAbstractItemView::PositionAtCenter);
 
 	connect(ui->codecListWidget, &QListWidget::itemSelectionChanged,
 		[=]()
 	{
-		settings->setValue("video_codec", ui->codecListWidget->selectedItems().at(0)->text());
+		settings->SetCodecName(ui->codecListWidget->selectedItems().at(0)->text());
 	});
 
-	ui->videoBitrateSpinBox->setValue(settings->value("video_bitrate", "2500").toInt());
+	ui->videoBitrateSpinBox->setValue(settings->GetVideoBitrate());
 	connect(ui->videoBitrateSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
 		[=](const int i)
 	{
-		settings->setValue("video_bitrate", i);
+		settings->SetVideoBitrate(i);
 	});
 
-	ui->videoWidthSpinBox->setValue(settings->value("video_width", "800").toInt());
+	ui->videoWidthSpinBox->setValue(settings->GetVideoWidth());
 	connect(ui->videoWidthSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
 		[=](const int i)
 	{
-		settings->setValue("video_width", i);
+		settings->SetVideoWidth(i);
 	});
 
-	ui->videoHeightSpinBox->setValue(settings->value("video_height", "600").toInt());
+	ui->videoHeightSpinBox->setValue(settings->GetVideoHeight());
 	connect(ui->videoHeightSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
 		[=](const int i)
 	{
-		settings->setValue("video_height", i);
+		settings->SetVideoHeight(i);
 	});
 
-	ui->videoFramerateSpinBox->setValue(settings->value("video_framerate", "30").toInt());
+	ui->videoFramerateSpinBox->setValue(settings->GetVideoFramerate());
 	connect(ui->videoWidthSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
 		[=](const int i)
 	{
-		settings->setValue("video_framerate", i);
+		settings->SetVideoFramerate(i);
 	});
 
-	ui->portLineEdit->setText(settings->value("port_name", "COM1").toString());
+	ui->portLineEdit->setText(settings->GetPortName());
 	connect(ui->portLineEdit, &QLineEdit::textChanged,
 		[=](const QString& text)
 	{
-		settings->setValue("port_name", text);
+		settings->SetPortName(text);
 	});
 
-	ui->portRateSpinBox->setValue(settings->value("port_rate", "9600").toInt());
+	ui->portRateSpinBox->setValue(settings->GetPortRate());
 	connect(ui->portRateSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
 		[=](const int i)
 	{
-		settings->setValue("port_rate", i);
+		settings->SetPortRate(i);
 	});
 
-	const auto lastDataBits = settings->value("port_databits", "8").toInt();
+	const auto lastDataBits = settings->GetPortDataBits();
 	ui->portDataBitsComboBox->addItem("4", 4);
 	ui->portDataBitsComboBox->addItem("5", 5);
 	ui->portDataBitsComboBox->addItem("6", 6);
@@ -99,27 +105,27 @@ SettingsDialog::SettingsDialog(QSettings* set, QWidget* parent)
 	connect(ui->portDataBitsComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), 
 		[=](const int index)
 	{
-		settings->setValue("port_databits", index);
+		settings->SetPortDataBits(index);
 	});
 
-	ui->portParityComboBox->addItem("none");
-	ui->portParityComboBox->addItem("odd");
-	ui->portParityComboBox->addItem("even");
-	ui->portParityComboBox->setCurrentIndex(ui->portParityComboBox->findText(settings->value("port_parity", "none").toString(), Qt::MatchFixedString));
+	ui->portParityComboBox->addItem("none", boost::asio::serial_port_base::parity::none);
+	ui->portParityComboBox->addItem("odd", boost::asio::serial_port_base::parity::odd);
+	ui->portParityComboBox->addItem("even", boost::asio::serial_port_base::parity::even);
+	ui->portParityComboBox->setCurrentIndex(ui->portParityComboBox->findData(settings->GetPortParity().value()));
 	connect(ui->portParityComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
 		[=](const int index)
 	{
-		settings->setValue("port_parity", ui->portParityComboBox->itemData(index).toString());
+		settings->SetPortParity(ui->portParityComboBox->itemData(index).value<boost::asio::serial_port_base::parity>());
 	});
 
-	ui->portStopBitsComboBox->addItem("one");
-	ui->portStopBitsComboBox->addItem("onepointfive");
-	ui->portStopBitsComboBox->addItem("two");
-	ui->portStopBitsComboBox->setCurrentIndex(ui->portStopBitsComboBox->findText(settings->value("port_stopbits", "one").toString(), Qt::MatchFixedString));
+	ui->portStopBitsComboBox->addItem("one", boost::asio::serial_port_base::stop_bits::one);
+	ui->portStopBitsComboBox->addItem("onepointfive", boost::asio::serial_port_base::stop_bits::onepointfive);
+	ui->portStopBitsComboBox->addItem("two", boost::asio::serial_port_base::stop_bits::two);
+	ui->portStopBitsComboBox->setCurrentIndex(ui->portStopBitsComboBox->findData(settings->GetPortStopbits().value()));
 	connect(ui->portStopBitsComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
 		[=](const int index)
 	{
-		settings->setValue("port_stopbits", ui->portStopBitsComboBox->itemData(index).toString());
+		settings->SetPortStopbits(ui->portStopBitsComboBox->itemData(index).value<boost::asio::serial_port_base::stop_bits>());
 	});
 }
 
