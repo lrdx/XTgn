@@ -7,6 +7,8 @@
 #include <chrono>
 
 #include <QFileDialog>
+#include <QNetworkDatagram>
+#include <QJsonDocument>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -44,8 +46,9 @@ void MainWindow::OpenSettingsWindow()
 
 void MainWindow::NewExpirement()
 {
-	StopThreadIfWorked();
+	StopThread();
 
+#ifndef TEST_NO_VR
 	vr->Initalize(settings->GetVREye());
 
 	if (!vr->IsInitialized())
@@ -76,33 +79,31 @@ void MainWindow::NewExpirement()
 		logger->WriteError("VideoWriter failed initialization");
 		return;
 	}
+#endif
+
+	logger->WriteInfo("All successfully initialized. Waiting...");
 }
 
-void MainWindow::StartExpirement()
+void MainWindow::StartThread()
 {
-	StopThreadIfWorked();
-
-	if (!vr->IsInitialized() || !vw->IsInitialized())
-	{
-		logger->WriteError("VR or videowriter uninitialized");
-		return;
-	}
-
 	thread_worked = true;
 
 	pWatchdogThread.reset(std::make_unique<std::thread>([&]()
 	{
 		const auto framerate = settings->GetVideoFramerate();
 
+		logger->WriteInfo("Thread successfully started");
+
 		boost::asio::io_context io;
 		boost::asio::serial_port serial_port(io);
-		serial_port.set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
-		serial_port.set_option(boost::asio::serial_port_base::baud_rate(9600));
-		serial_port.set_option(boost::asio::serial_port_base::character_size(8));
-		serial_port.set_option(boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one));
 
 		try
 		{
+			serial_port.set_option(boost::asio::serial_port_base::parity(settings->GetPortParity()));
+			serial_port.set_option(boost::asio::serial_port_base::baud_rate(settings->GetPortRate()));
+			serial_port.set_option(boost::asio::serial_port_base::character_size(settings->GetPortDataBits()));
+			serial_port.set_option(boost::asio::serial_port_base::stop_bits(settings->GetPortStopbits()));
+
 			serial_port.open(settings->GetPortName().toStdString());
 
 			serial_port.write_some(boost::asio::buffer("1"));
@@ -110,35 +111,91 @@ void MainWindow::StartExpirement()
 		}
 		catch (const boost::system::system_error& ex)
 		{
-			logger->WriteError(QString("Error initialization serial port %1: %2").arg(settings->GetPortName()));
+			logger->WriteError(QString("Error initialization serial port %1: %2").arg(settings->GetPortName()).arg(ex.what()));
 		}
 
 		while (thread_worked)
 		{
-			auto startTime = std::chrono::high_resolution_clock::now();
+			const auto startTime = std::chrono::high_resolution_clock::now();
+#ifndef TEST_NO_VR
 			vr->CopyScreenToBuffer();
-			auto endTime = std::chrono::high_resolution_clock::now();
-			auto lastedTime1 = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-			startTime = std::chrono::high_resolution_clock::now();
 			vw->WriteFrame(vr->GetBuffer(), vr->GetBufferRowCount(), vr->GetBufferRowPitch());
-			endTime = std::chrono::high_resolution_clock::now();
-			auto lastedTime2 = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-			const auto sleepTime = std::chrono::milliseconds(static_cast<int>(std::round(1000 / framerate - (lastedTime1 + lastedTime2))));
+#endif
+			const auto endTime = std::chrono::high_resolution_clock::now();
+			auto lastedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+			const auto sleepTime = std::chrono::milliseconds(static_cast<int>(std::round(1000 / framerate - lastedTime)));
 			//logger->WriteInfo(QString("sleeptime: %1").arg(sleepTime.count()));
 			std::this_thread::sleep_for(sleepTime);
 		}
+#ifndef TEST_NO_VR
 		vw->CloseFile();
 		logger->WriteInfo("Write file..");
+#endif
 		thread_worked = false;
 	}).release());
 }
 
-void MainWindow::StopExpirement()
+void MainWindow::StartExpirement()
 {
-	StopThreadIfWorked();
+	if (thread_worked)
+	{
+		logger->WriteError("Stop current expirement first");
+		return;
+	}
+
+#ifndef TEST_NO_VR
+	if (!vr->IsInitialized())
+	{
+		logger->WriteError("VR uninitialized");
+		return;
+	}
+
+	if (!vw->IsInitialized())
+	{
+		logger->WriteError("Videowriter uninitialized");
+		return;
+	}
+#endif
+
+	if (settings->GetGoProSync())
+	{
+		udpSocket.reset(new QUdpSocket());
+		udpSocket->bind(QHostAddress::LocalHost, settings->GetGoProPort());
+
+		connect(udpSocket.get(), &QUdpSocket::readyRead, this,
+			[&]()
+		{
+			while (udpSocket->hasPendingDatagrams()) {
+				QNetworkDatagram datagram = udpSocket->receiveDatagram();
+				QByteArray replyData = datagram.data();
+				const auto tt = QJsonDocument::fromBinaryData(replyData);
+				const auto ff = tt.toJson();
+
+				if (tt["state"].toInt() == 1 && !tt["url"].toString().isEmpty())
+				{
+					StartThread();
+					logger->WriteInfo(QString("UDP: %1").arg(tt["position"].toString()));
+					disconnect(udpSocket.get(), &QUdpSocket::readyRead, this, nullptr);
+					return;
+				}
+			}
+		});
+
+		return;
+	}
+	else
+	{
+		StartThread();		
+	}
 }
 
-void MainWindow::StopThreadIfWorked()
+void MainWindow::StopExpirement()
+{
+	disconnect(udpSocket.get(), &QUdpSocket::readyRead, this, nullptr);
+	StopThread();
+}
+
+void MainWindow::StopThread()
 {
 	if (thread_worked)
 	{

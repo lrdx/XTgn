@@ -48,6 +48,12 @@ public:
 	boost::asio::serial_port_base::stop_bits GetPortStopbits() const { return m_port_stopbits; }
 	void  SetPortStopbits(boost::asio::serial_port_base::stop_bits stopbits);
 
+	bool GetGoProSync() const { return m_gopro_sync_use; }
+	void SetGoProSync(bool use);
+
+	int GetGoProPort() const { return m_gopro_port; }
+	void SetGoProPort(int port);
+
 	void Save(QSettings* settings);
 	void Load(QSettings* settings);
 private:
@@ -62,6 +68,8 @@ private:
 	int m_port_databits;
 	boost::asio::serial_port_base::parity m_port_parity;
 	boost::asio::serial_port_base::stop_bits m_port_stopbits;
+	bool m_gopro_sync_use;
+	int m_gopro_port;
 };
 
 #endif	//__SETTINGS_HOLDER__

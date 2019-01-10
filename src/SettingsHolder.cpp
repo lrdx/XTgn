@@ -15,6 +15,9 @@ SettingsHolder::SettingsHolder()
 	m_port_databits = 8;	
 	m_port_parity = boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none);
 	m_port_stopbits = boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one);
+
+	m_gopro_sync_use = false;
+	m_gopro_port = 7755;
 }
 
 SettingsHolder::SettingsHolder(const SettingsHolder& settings)
@@ -31,6 +34,8 @@ SettingsHolder::SettingsHolder(const SettingsHolder& settings)
 	SetPortDataBits(settings.m_port_databits);
 	SetPortParity(settings.m_port_parity);
 	SetPortStopbits(settings.m_port_stopbits);
+	SetGoProSync(settings.m_gopro_sync_use);
+	SetGoProPort(settings.m_gopro_port);
 }
 
 void SettingsHolder::Load(QSettings* settings)
@@ -77,6 +82,9 @@ void SettingsHolder::Load(QSettings* settings)
 	{
 		m_port_stopbits = boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one);
 	}
+
+	m_gopro_sync_use = settings->value("gopro_port_use", "true").toBool();
+	m_gopro_port = settings->value("gopro_port", "7755").toInt();
 }
 
 void SettingsHolder::Save(QSettings* settings)
@@ -125,6 +133,9 @@ void SettingsHolder::Save(QSettings* settings)
 		settings->setValue("port_stopbits", "two");
 		break;
 	}
+
+	settings->setValue("gopro_port_use", m_gopro_sync_use);
+	settings->setValue("gopro_port", m_gopro_port);
 
 	settings->sync();
 }
@@ -200,4 +211,14 @@ void SettingsHolder::SetPortParity(boost::asio::serial_port_base::parity parity)
 void SettingsHolder::SetPortStopbits(boost::asio::serial_port_base::stop_bits stopbits)
 {
 	m_port_stopbits = stopbits;
+}
+
+void SettingsHolder::SetGoProSync(bool use)
+{
+	m_gopro_sync_use = use;
+}
+
+void SettingsHolder::SetGoProPort(int port)
+{
+	m_gopro_port = port;
 }

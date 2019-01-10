@@ -7,6 +7,7 @@
 #include "SettingsHolder.h"
 
 #include <QMainWindow>
+#include <QUdpSocket>
 
 QT_BEGIN_NAMESPACE
 class QAction;
@@ -50,7 +51,10 @@ private:
 	std::unique_ptr<std::thread> pWatchdogThread;
 	bool thread_worked = false;
 
-	void StopThreadIfWorked();
+	std::unique_ptr<QUdpSocket> udpSocket;
+
+	void StopThread();
+	void StartThread();
 
 public slots:
 	void StartExpirement();

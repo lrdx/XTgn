@@ -10,12 +10,10 @@ class Logger : public QObject
 public:
 	explicit Logger(QObject *parent, QString fileName, QPlainTextEdit *editor = nullptr);
 	~Logger();
-	void SetShowDateTime(bool value);
 
 private:
 	QFile* m_file;
 	QPlainTextEdit *m_editor;
-	bool m_showDate;
 
 signals:
 

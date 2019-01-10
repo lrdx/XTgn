@@ -127,6 +127,20 @@ SettingsDialog::SettingsDialog(SettingsHolder* set, QWidget* parent)
 	{
 		settings->SetPortStopbits(ui->portStopBitsComboBox->itemData(index).value<boost::asio::serial_port_base::stop_bits>());
 	});
+
+	ui->goProGroupBox->setChecked(settings->GetGoProSync());
+	connect(ui->goProGroupBox, &QGroupBox::toggled, 
+		[=](const bool on)
+	{
+		settings->SetGoProSync(on);
+	});
+
+	ui->udpPortSpinBox->setValue(settings->GetGoProPort());
+	connect(ui->udpPortSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
+		[=](const int i)
+	{
+		settings->SetGoProPort(i);
+	});
 }
 
 SettingsDialog::~SettingsDialog()

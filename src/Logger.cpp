@@ -6,7 +6,6 @@
 Logger::Logger(QObject *parent, QString fileName, QPlainTextEdit *editor) : QObject(parent)
 {
 	m_editor = editor;
-	m_showDate = true;
 	if (!fileName.isEmpty())
 	{
 		m_file = new QFile;
@@ -18,8 +17,7 @@ Logger::Logger(QObject *parent, QString fileName, QPlainTextEdit *editor) : QObj
 void Logger::Write(const QString& value) 
 {
 	QString text = value;// + "";
-	if (m_showDate)
-		text = QDateTime::currentDateTime().toString("dd.MM.yyyy hh:mm:ss ") + text;
+	text = QDateTime::currentDateTime().toString("dd.MM.yyyy hh:mm:ss:ms ") + text;
 
 	QTextStream out(m_file);
 	out.setCodec("UTF-8");
@@ -27,10 +25,13 @@ void Logger::Write(const QString& value)
 	{
 		out << text;
 	}
-	if (m_editor != nullptr)
-		m_editor->appendPlainText(text);
 
-	m_editor->update();
+	if (m_editor != nullptr)
+	{
+		QMetaObject::invokeMethod(m_editor, "appendPlainText", Q_ARG(QString, text));
+	}
+
+	QMetaObject::invokeMethod(m_editor, "update");
 }
 
 void Logger::WriteInfo(const QString& value)
@@ -46,11 +47,6 @@ void Logger::WriteDebug(const QString& value)
 void Logger::WriteError(const QString& value)
 {
 	Write("[Error] " + value);
-}
-
-void Logger::SetShowDateTime(const bool value) 
-{
-	m_showDate = value;
 }
 
 Logger::~Logger() 
