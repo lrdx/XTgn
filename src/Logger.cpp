@@ -17,7 +17,7 @@ Logger::Logger(QObject *parent, QString fileName, QPlainTextEdit *editor) : QObj
 void Logger::Write(const QString& value) 
 {
 	QString text = value;// + "";
-	text = QDateTime::currentDateTime().toString("dd.MM.yyyy hh:mm:ss:ms ") + text;
+	text = QDateTime::currentDateTime().toString("dd.MM.yyyy hh:mm:ss.ms ") + text;
 
 	QTextStream out(m_file);
 	out.setCodec("UTF-8");

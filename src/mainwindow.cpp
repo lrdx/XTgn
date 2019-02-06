@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "SettingsWindow.h"
+#include "StressMonitor.h"
 
 #include <boost/asio.hpp>
 
@@ -30,6 +31,10 @@ MainWindow::MainWindow(QWidget *parent) :
 	logger = new Logger(this, "log.txt", ui->plainTextEdit);
 	vr = new VRWorker(logger);
 	vw = new XVideoWriter(logger);
+
+	const auto stress_monitor = new StressMonitor(QString("lrdx"), QString("stefan-08-02"));
+
+	stress_monitor->SendMark("08.02.2016 16:55:00.000000", "08.02.2016 16:56:00.000000", 1);
 }
 
 void MainWindow::OpenSettingsWindow()
@@ -174,7 +179,6 @@ void MainWindow::StartExpirement()
 				if (tt["state"].toInt() == 1 && !tt["url"].toString().isEmpty())
 				{
 					StartThread();
-					logger->WriteInfo(QString("UDP: %1").arg(tt["position"].toString()));
 					disconnect(udpSocket.get(), &QUdpSocket::readyRead, this, nullptr);
 					return;
 				}
